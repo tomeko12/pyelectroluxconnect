@@ -551,10 +551,12 @@ class Session(object):
         _translation = None
         if(self._language == "All"):
             _translation = self._applianceTranslations[applianceId][langKey]
-        elif(self._language in self._applianceTranslations[applianceId][langKey] 
+        elif(langKey in self._applianceTranslations[applianceId]
+             and self._language in self._applianceTranslations[applianceId][langKey] 
              and self._applianceTranslations[applianceId][langKey][self._language] != ""):
             _translation = self._applianceTranslations[applianceId][langKey][self._language]
-        else:
+        elif(langKey in self._applianceTranslations[applianceId]
+             and "eng" in self._applianceTranslations[applianceId][langKey]):
             _translation = self._applianceTranslations[applianceId][langKey]["eng"]
         return _translation
 
