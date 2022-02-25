@@ -549,15 +549,14 @@ class Session(object):
         if(langKey == None or langKey == ""):
             return ""
         _translation = None
-        if(self._language == "All"):
-            _translation = self._applianceTranslations[applianceId][langKey]
-        elif(langKey in self._applianceTranslations[applianceId]
-             and self._language in self._applianceTranslations[applianceId][langKey] 
-             and self._applianceTranslations[applianceId][langKey][self._language] != ""):
-            _translation = self._applianceTranslations[applianceId][langKey][self._language]
-        elif(langKey in self._applianceTranslations[applianceId]
-             and "eng" in self._applianceTranslations[applianceId][langKey]):
-            _translation = self._applianceTranslations[applianceId][langKey]["eng"]
+        if(langKey in self._applianceTranslations[applianceId]):
+            if(self._language == "All"):
+                _translation = self._applianceTranslations[applianceId][langKey]
+            elif(self._language in self._applianceTranslations[applianceId][langKey] 
+                 and self._applianceTranslations[applianceId][langKey][self._language] != ""):
+                _translation = self._applianceTranslations[applianceId][langKey][self._language]
+            elif("eng" in self._applianceTranslations[applianceId][langKey]):
+                _translation = self._applianceTranslations[applianceId][langKey]["eng"]
         return _translation
 
 
