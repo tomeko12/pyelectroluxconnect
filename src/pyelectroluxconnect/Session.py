@@ -203,12 +203,12 @@ class Session(object):
 
                         _json = json.loads(
                             archive.read(
-                                f"{deviceConfigId}/profile.json"))
+                                f"{archive.namelist()[0]}profile.json"))
                         _profile = self._parseProfileFile(_json, applianceId)
 
                         _json = json.loads(
                             archive.read(
-                                f"{deviceConfigId}/{next(item for item in _json['bundles'] if item['type'] == 'Localization')['path']}"))
+                                f"{archive.namelist()[0]}{next(item for item in _json['bundles'] if item['type'] == 'Localization')['path']}"))
 
                         self._applianceTranslations[applianceId] = self._parseLocale_bundleFile(_json)
                         self._applianceProfiles[applianceId] = self._createApplianceProfile(
@@ -236,11 +236,10 @@ class Session(object):
             for component in modules["components"]:
                 if "hacl" in component:
                     result[component["hacl"]["name"]] = self._parseProfileFileEntry(modules["path"],component)
-                elif "id" in component:
+                elif "id" in component and "parent_interfaces" in component:
                     _identry = self._parseProfileFileEntry(modules["path"],component)
                     _identry["id"] = component["id"]
-                    if "parent_interfaces" in component:
-                        _identry["parent_interfaces"] = component["parent_interfaces"]
+                    _identry["parent_interfaces"] = component["parent_interfaces"]
                     result["id"].append(_identry)
         
         return result
