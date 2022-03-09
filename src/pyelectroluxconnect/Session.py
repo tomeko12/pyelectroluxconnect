@@ -58,7 +58,8 @@ class Session(object):
             language=None, 
             deviceId="CustomDeviceId", 
             raw=False,  
-            verifySsl=True):
+            verifySsl=True,
+            regionServer="https://api.emea.ecp.electrolux.com"):
         """
         username, password - Electrolux platform credentials
         country - 2-char country code
@@ -66,7 +67,8 @@ class Session(object):
         tokenFileName - file to store auth token
         deviceId - custom id of Electrolux platform client
         raw - display HTTP requests/responses
-        verifySsl - verify Electrolux platform servers certs.
+        verifySsl - verify Electrolux platform servers certs
+        regionServer - region server URL (default - EMEA server)
         """
 
         self._username = username
@@ -88,6 +90,9 @@ class Session(object):
         else:
             self._verifySsl = os.path.join(os.path.dirname(__file__),
                     "certificatechain.pem")
+        
+        if regionServer is not None:
+            urls.BASE_URL = regionServer
 
 
 
