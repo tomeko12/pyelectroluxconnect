@@ -15,7 +15,7 @@ It is general client, and all parameters (called HACL), that can be read or set,
   
 ```python
 import pyelectroluxconnect
-ses = pyelectroluxconnect.Session(username, password, tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", raw = False, verifySsl = True, regionServer= "https://api.emea.ecp.electrolux.com")
+ses = pyelectroluxconnect.Session(username, password, tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", raw = False, verifySsl = True, region="emea", regionServer=None)
 ```
 
 or minimal input set: 
@@ -33,6 +33,7 @@ where:
 `deviceId` - custom id of client used in ECP, should be unique for every client instance (default: `CustomDeviceId`)  
 `raw` - display HTTP requests/responses (default: `False`)  
 `verifySsl` - verify ECP servers certs (default: `True`)  
+`region` - account region (defalt `emea`. Tested with `emea` and `apac`  
 `regionServer` - region server URL (default, tested EMEA server `https://api.emea.ecp.electrolux.com`. Other supported regional servers can be set)   
 
 

@@ -59,7 +59,8 @@ class Session(object):
             deviceId="CustomDeviceId", 
             raw=False,  
             verifySsl=True,
-            regionServer="https://api.emea.ecp.electrolux.com"):
+            region="emea",
+            regionServer=None):
         """
         username, password - Electrolux platform credentials
         country - 2-char country code
@@ -68,6 +69,7 @@ class Session(object):
         deviceId - custom id of Electrolux platform client
         raw - display HTTP requests/responses
         verifySsl - verify Electrolux platform servers certs
+        region = region name (currently tested: "emea", "apac")
         regionServer - region server URL (default - EMEA server)
         """
 
@@ -76,6 +78,7 @@ class Session(object):
         self._country = country
         self._raw = raw
         self._language = language
+        self._region = region
         self._deviceId = deviceId
         self._tokenFileName = os.path.expanduser(tokenFileName)
         self._sessionToken = None
@@ -93,7 +96,13 @@ class Session(object):
         
         if regionServer is not None:
             urls.BASE_URL = regionServer
-
+        elif self._region == "emea":
+           urls.BASE_URL = "https://api.emea.ecp.electrolux.com"
+        elif self._region == "apac":
+           urls.BASE_URL = "https://api.apac.ecp.electrolux.com"
+        elif self._region == "latam":
+            urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
+        
 
 
     def __enter__(self):
@@ -110,8 +119,8 @@ class Session(object):
 
     def _headers(self):
         headers = {
-            "x-ibm-client-id": "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35",
-            "x-api-key": "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35",
+            "x-ibm-client-id": urls.getEcpClientId(),
+            "x-api-key": urls.getEcpClientId(),
             "Content-Type": "application/json"
         }
         if self._sessionToken:
@@ -135,9 +144,13 @@ class Session(object):
         if self._raw: 
             print("--- creating token by authentication")
         try:
-            self._sessionToken = json.loads(
+            loginResp = json.loads(
                 self._requestHttp(
-                    urls.login(),_payload).text)["data"]["sessionKey"]
+                    urls.login(),_payload).text)
+            if loginResp["status"] == "OK":
+                self._sessionToken = loginResp["data"]["sessionKey"]
+            else:
+                raise Error(loginResp["message"])
                     
         except ResponseError as ex:
             if(ex.status_code == 401 
