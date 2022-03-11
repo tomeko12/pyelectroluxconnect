@@ -8,13 +8,15 @@ from urllib.parse import quote_plus
 BASE_URL = "https://api.emea.ecp.electrolux.com"
 
 
-def getEcpClientId():
-    if BASE_URL == "https://api.emea.ecp.electrolux.com":
+def getEcpClientId(region):
+    if region.lower() == "emea":
         return "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
-    elif BASE_URL == "https://api.apac.ecp.electrolux.com":
+    elif region.lower() == "apac":
         return "1c064d7a-c02e-438c-9ac6-78bf7311ba7c"
-    elif BASE_URL == "https://api.latam.ecp.electrolux.com":
-        return "dc9cfac1-4a29-4509-9041-9ae4a0572aac"        
+    elif region.lower() == "na":
+        return "dc9cfac1-4a29-4509-9041-9ae4a0572aac"
+    elif region.lower() == "latam":
+        return "3aafa8f0-9fd8-454d-97f6-f46e87b280e2"
     else:
         return "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
 

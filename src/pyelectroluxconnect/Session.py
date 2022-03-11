@@ -104,6 +104,8 @@ class Session(object):
         elif self._region == "na":
             urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
             self._brand = "Electrolux-NA"
+        elif self._region == "latam":
+            urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
         
 
 
@@ -121,8 +123,8 @@ class Session(object):
 
     def _headers(self):
         headers = {
-            "x-ibm-client-id": urls.getEcpClientId(),
-            "x-api-key": urls.getEcpClientId(),
+            "x-ibm-client-id": urls.getEcpClientId(self._region),
+            "x-api-key": urls.getEcpClientId(self._region),
             "Content-Type": "application/json"
         }
         if self._sessionToken:
@@ -137,7 +139,7 @@ class Session(object):
         """
         
         _payload = {
-                "brand":self._brand,
+                "brand": self._brand,
                 "country": self._country,
                 "deviceId": self._deviceId,
                 "password": self._password,

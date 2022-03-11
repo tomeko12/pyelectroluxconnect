@@ -33,7 +33,7 @@ where:
 `deviceId` - custom id of client used in ECP, should be unique for every client instance (default: `CustomDeviceId`)  
 `raw` - display HTTP requests/responses (default: `False`)  
 `verifySsl` - verify ECP servers certs (default: `True`)  
-`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`)  
+`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`, `latam`)  
 `regionServer` - region server URL (default, tested EMEA server `https://api.emea.ecp.electrolux.com`. Other supported regional servers can be set)   
 
 
