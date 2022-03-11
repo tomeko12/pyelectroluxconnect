@@ -80,6 +80,7 @@ class Session(object):
         self._language = language
         self._region = region
         self._deviceId = deviceId
+        self._brand = "Electrolux"
         self._tokenFileName = os.path.expanduser(tokenFileName)
         self._sessionToken = None
         self._applianceIndex = {}
@@ -100,8 +101,9 @@ class Session(object):
            urls.BASE_URL = "https://api.emea.ecp.electrolux.com"
         elif self._region == "apac":
            urls.BASE_URL = "https://api.apac.ecp.electrolux.com"
-        elif self._region == "latam":
+        elif self._region == "na":
             urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
+            self._brand = "Electrolux-NA"
         
 
 
@@ -135,6 +137,7 @@ class Session(object):
         """
         
         _payload = {
+                "brand":self._brand,
                 "country": self._country,
                 "deviceId": self._deviceId,
                 "password": self._password,

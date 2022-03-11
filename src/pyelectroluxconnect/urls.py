@@ -14,7 +14,7 @@ def getEcpClientId():
     elif BASE_URL == "https://api.apac.ecp.electrolux.com":
         return "1c064d7a-c02e-438c-9ac6-78bf7311ba7c"
     elif BASE_URL == "https://api.latam.ecp.electrolux.com":
-        return "7ff2358e-8d6d-4cf6-814a-fcb498fa2cf9"
+        return "dc9cfac1-4a29-4509-9041-9ae4a0572aac"        
     else:
         return "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
 
