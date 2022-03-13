@@ -2,6 +2,7 @@
 Python client package to communicate with the Electrolux Connectivity Platform (**ECP**) used by some home appliances, Electrolux owned brands, like: **Electrolux**, **AEG**, **Frigidaire**, **Husqvarna**.
 Tested with AEG washer-dryer, but probably could be used with some internet connected ovens, diswashers, fridges, airconditioners.  
 It is general client, and all parameters (called HACL), that can be read or set, names and translations are dynamically generated, based on appliance profile file, downloaded from ECP servers. 
+Appliance must be registered with one of the following ECP based applications: Electrolux Care, Electrolux Kitchen, Electrolux Life, Electrolux Oven, Electrolux Home+, AEG Care, AEG Kitchen, Frigidaire 2.0
     
 ## Features
 - list appliances paired with Electrolux account
@@ -17,7 +18,7 @@ To use this library, there's an account with Electrolux/AEG/Frigidaire app must 
   
 ```python
 import pyelectroluxconnect
-ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
+ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomDeviceId", raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
 ```
 
 or minimal input set: 
@@ -30,15 +31,15 @@ ses = pyelectroluxconnect.Session(username, password)
 where:   
 `username, password` - ECP (Electrolux site) credentials  
 `tokenFileName` - file to store auth token (default: `~/.electrolux-token`)  
+`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`, `latam`, `frigidaire`)  
 `country` - 2-char country code (default `US`)  
 `language` - 3-char language code for translations (`All` - for all delivered languages, default: `None`)  
 `deviceId` - custom id of client used in ECP, should be unique for every client instance (default: `CustomDeviceId`)  
 `raw` - display HTTP requests/responses (default: `False`)  
 `verifySsl` - verify ECP servers certs (default: `True`)  
-`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`, `latam`, `frigidaire`)  
-`regionServer` - region server URL (default, tested EMEA server `https://api.emea.ecp.electrolux.com`. Other supported regional servers can be set)   
-`customApiKey` - custom value of "x-ibm-client-id" and "x-api-key" HTTP headers
-`customApiBrand` - custom "brand" value (default is based on selected region) 
+`regionServer` - region server URL (default is based on selected region)   
+`customApiKey` - custom value of "x-ibm-client-id" and "x-api-key" HTTP headers (default is based on selected region)   
+`customApiBrand` - custom "brand" value (default is based on selected region)  
 
 
 
