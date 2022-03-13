@@ -17,8 +17,7 @@ To use this library, there's an account with Electrolux/AEG/Frigidaire app must 
   
 ```python
 import pyelectroluxconnect
-ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", 
-									raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
+ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
 ```
 
 or minimal input set: 
