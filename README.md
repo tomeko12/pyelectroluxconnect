@@ -12,10 +12,13 @@ It is general client, and all parameters (called HACL), that can be read or set,
 
 ## Usage
 #### Initiate session
+To use this library, there's an account with Electrolux/AEG/Frigidaire app must be created. By default, library is using EMEA region apps credentials. If account is created in other region app, `region` parameter must be set. If created account is not supported, You can manually set `regionServer`, `customApiKey` and `customApiBrand` parameters (from sniffed traffic or extracted from mobile app).
+
   
 ```python
 import pyelectroluxconnect
-ses = pyelectroluxconnect.Session(username, password, tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", raw = False, verifySsl = True, region="emea", regionServer=None)
+ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomeDeviceId", 
+									raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
 ```
 
 or minimal input set: 
@@ -33,8 +36,10 @@ where:
 `deviceId` - custom id of client used in ECP, should be unique for every client instance (default: `CustomDeviceId`)  
 `raw` - display HTTP requests/responses (default: `False`)  
 `verifySsl` - verify ECP servers certs (default: `True`)  
-`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`, `latam`)  
+`region` - account region (defalt `emea`. Tested with `emea`, `apac`, `na`, `latam`, `frigidaire`)  
 `regionServer` - region server URL (default, tested EMEA server `https://api.emea.ecp.electrolux.com`. Other supported regional servers can be set)   
+`customApiKey` - custom value of "x-ibm-client-id" and "x-api-key" HTTP headers
+`customApiBrand` - custom "brand" value (default is based on selected region) 
 
 
 

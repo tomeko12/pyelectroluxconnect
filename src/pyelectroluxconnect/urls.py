@@ -1,24 +1,53 @@
 """
-List of some ECP URLs 
+List of some ECP URLs and strings 
 """
 
 import re
 from urllib.parse import quote_plus
 
 BASE_URL = "https://api.emea.ecp.electrolux.com"
+X_API_KEY = "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
+BRAND = "Electrolux"
 
+_region_params = {
+    "emea": ["https://api.emea.ecp.electrolux.com", 
+             "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35",
+             "Electrolux"],
+    "apac": ["https://api.apac.ecp.electrolux.com",
+             "1c064d7a-c02e-438c-9ac6-78bf7311ba7c",
+             "Electrolux"],
+    "na":   ["https://api.latam.ecp.electrolux.com",
+             "dc9cfac1-4a29-4509-9041-9ae4a0572aac",
+             "Electrolux-NA"],
+    "latam":["https://api.latam.ecp.electrolux.com",
+             "3aafa8f0-9fd8-454d-97f6-f46e87b280e2",
+             "Electrolux"],
+    "frigidaire": ["https://api.latam.ecp.electrolux.com",
+                   "7ff2358e-8d6d-4cf6-814a-fcb498fa2cf9",
+                   "frigidaire"]
+    }
+
+
+def getEcpClientUrl(region):
+    if region in _region_params:
+        return  _region_params[region][0]
+    else:
+        return BASE_URL
+        
 
 def getEcpClientId(region):
-    if region.lower() == "emea":
-        return "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
-    elif region.lower() == "apac":
-        return "1c064d7a-c02e-438c-9ac6-78bf7311ba7c"
-    elif region.lower() == "na":
-        return "dc9cfac1-4a29-4509-9041-9ae4a0572aac"
-    elif region.lower() == "latam":
-        return "3aafa8f0-9fd8-454d-97f6-f46e87b280e2"
+    if region in _region_params:
+        return _region_params[region][1]
     else:
-        return "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
+        return X_API_KEY
+
+    
+def getEcpClientBrand(region):
+    if region in _region_params:
+        return _region_params[region][2]
+    else:
+        return BRAND
+
 
 #Authenticate (get Session key)
 def login():

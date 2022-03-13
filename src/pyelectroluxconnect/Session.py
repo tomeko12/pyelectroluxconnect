@@ -60,7 +60,9 @@ class Session(object):
             raw=False,  
             verifySsl=True,
             region="emea",
-            regionServer=None):
+            regionServer=None,
+            customApiKey=None,
+            customApiBrand=None):
         """
         username, password - Electrolux platform credentials
         country - 2-char country code
@@ -69,8 +71,10 @@ class Session(object):
         deviceId - custom id of Electrolux platform client
         raw - display HTTP requests/responses
         verifySsl - verify Electrolux platform servers certs
-        region = region name (currently tested: "emea", "apac")
+        region = region name (currently tested: "emea", "apac", "latam", "na", "frigidaire")
         regionServer - region server URL (default - EMEA server)
+        customApiKey - custom value of "x-ibm-client-id" and "x-api-key" HTTP headers
+        customApiBrand - custom "brand" value (default is based on selected region) 
         """
 
         self._username = username
@@ -80,7 +84,6 @@ class Session(object):
         self._language = language
         self._region = region
         self._deviceId = deviceId
-        self._brand = "Electrolux"
         self._tokenFileName = os.path.expanduser(tokenFileName)
         self._sessionToken = None
         self._applianceIndex = {}
@@ -97,16 +100,14 @@ class Session(object):
         
         if regionServer is not None:
             urls.BASE_URL = regionServer
-        elif self._region == "emea":
-           urls.BASE_URL = "https://api.emea.ecp.electrolux.com"
-        elif self._region == "apac":
-           urls.BASE_URL = "https://api.apac.ecp.electrolux.com"
-        elif self._region == "na":
-            urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
-            self._brand = "Electrolux-NA"
-        elif self._region == "latam":
-            urls.BASE_URL = "https://api.latam.ecp.electrolux.com"
+        elif region is not None:
+            urls.BASE_URL = urls.getEcpClientUrl(region.lower())
+            
+        if customApiKey is not None:
+            urls.X_API_KEY = customApiKey
         
+        if customApiBrand is not None:
+            urls.BRAND = customApiBrand
 
 
     def __enter__(self):
@@ -139,7 +140,7 @@ class Session(object):
         """
         
         _payload = {
-                "brand": self._brand,
+                "brand": urls.getEcpClientBrand(self._region),
                 "country": self._country,
                 "deviceId": self._deviceId,
                 "password": self._password,
@@ -159,8 +160,11 @@ class Session(object):
                     
         except ResponseError as ex:
             if(ex.status_code == 401 
-               and json.loads(ex.text)["code"] == "AER0802"):
+               or json.loads(ex.text)["code"] == "AER0802"
+               or json.loads(ex.text)["code"] == "ECP0108"):
                 raise LoginError(json.loads(ex.text)["message"]) from None
+            else:
+                raise Error(json.loads(ex.text)["message"]) from None
 
 
     def _getAppliancesList(self):
@@ -632,7 +636,7 @@ class Session(object):
                 self._getAppliancesList()
 
             except ResponseError as ErrorArg:
-                if(ErrorArg.status_code == "ECP0105"):
+                if(ErrorArg.status_code in ("ECP0105", "ECP0201")):
                     if(self._raw): print("--- token probably expired")
                     self._sessionToken = None
                     os.remove(self._tokenFileName)
