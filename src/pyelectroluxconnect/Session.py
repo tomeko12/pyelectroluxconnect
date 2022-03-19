@@ -101,7 +101,7 @@ class Session(object):
         if regionServer is not None:
             urls.BASE_URL = regionServer
         elif region is not None:
-            urls.BASE_URL = urls.getEcpClientUrl(region.lower())
+            urls.BASE_URL = urls.getEcpClientUrl(region)
             
         if customApiKey is not None:
             urls.X_API_KEY = customApiKey
@@ -255,8 +255,8 @@ class Session(object):
         """
         result = {}
         
-        self._applianceIndex[applianceId]["brand"] = _json["brand"] 
         self._applianceIndex[applianceId]["group"] = _json["group"]
+        self._applianceIndex[applianceId]["brand"] = _json["brand"] 
         if(_json["model_name"] == ""):
             self._applianceIndex[applianceId]["model"] = self._findModel(applianceId)
         else:

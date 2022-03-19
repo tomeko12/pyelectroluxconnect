@@ -29,22 +29,22 @@ _region_params = {
 
 
 def getEcpClientUrl(region):
-    if region in _region_params:
-        return  _region_params[region][0]
+    if region.lower() in _region_params:
+        return  _region_params[region.lower()][0]
     else:
         return BASE_URL
         
 
 def getEcpClientId(region):
-    if region in _region_params:
-        return _region_params[region][1]
+    if region.lower() in _region_params:
+        return _region_params[region.lower()][1]
     else:
         return X_API_KEY
 
     
 def getEcpClientBrand(region):
-    if region in _region_params:
-        return _region_params[region][2]
+    if region.lower() in _region_params:
+        return _region_params[region.lower()][2]
     else:
         return BRAND
 
