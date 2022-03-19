@@ -151,3 +151,11 @@ def unregisterMQTT():
         base_url=BASE_URL),
         "POST"
         ]
+    
+#Find docs by PNC
+def getDocsTable(appliance):
+    return ["https://www.electrolux-ui.com/SearchResults.aspx?PNC={_pnc}{_elc}&ModelDenomination=&Language=&DocumentType=&Brand=".format(
+        _pnc = re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
+        _elc = re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
+        "GET"
+        ]

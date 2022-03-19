@@ -254,9 +254,13 @@ class Session(object):
         Parse device profile.json file
         """
         result = {}
+        
         self._applianceIndex[applianceId]["brand"] = _json["brand"] 
-        self._applianceIndex[applianceId]["group"] = _json["group"] 
-        self._applianceIndex[applianceId]["model"] = _json["model_name"] 
+        self._applianceIndex[applianceId]["group"] = _json["group"]
+        if(_json["model_name"] == ""):
+            self._applianceIndex[applianceId]["model"] = self._findModel(applianceId)
+        else:
+            self._applianceIndex[applianceId]["model"] = _json["model_name"] 
 
         result["id"] = []
         for modules in _json["modules"]:
@@ -586,10 +590,13 @@ class Session(object):
         return _translation
 
 
-    def _requestHttp(self, operation, payload = None):
+    def _requestHttp(self, operation, payload = None, verifySSL = None):
         """
         Request to Electrolux cloud
         """
+
+        if (verifySSL is None):
+            verifySSL = self._verifySsl
 
         if(self._raw is True):
                 print(f"--- url: {operation[1]!s} {operation[0]!s}")
@@ -600,10 +607,10 @@ class Session(object):
         try:
             if (operation[1] == "GET"):
                 response = requests.get(operation[0],
-                                        headers=self._headers(), verify=self._verifySsl)
+                                        headers=self._headers(), verify=verifySSL)
             elif (operation[1] == "POST"):
                 response = requests.post(operation[0], json=payload,
-                                        headers=self._headers(), verify=self._verifySsl)
+                                        headers=self._headers(), verify=verifySSL)
             else:
                 raise Error("Bad request definition")
             
@@ -620,7 +627,29 @@ class Session(object):
 
         _validate_response(response)
         return response
-           
+
+
+    def _findModel(self, applianceId):
+        """
+        Find model on https://www.electrolux-ui.com/ website
+        """
+        try:
+            from bs4 import BeautifulSoup
+        
+            appliance = self._applianceIndex.get(applianceId)
+        
+            if(appliance):
+                _html = self._requestHttp(urls.getDocsTable(appliance), verifySSL = True).text
+        
+                soup = BeautifulSoup(_html, 'html.parser')
+                cols = soup.find("table", {"class":"SearchGridView"}).find("tr", {"class":"bottomBorder"}).find_all("td")
+                if(cols[0].get_text().strip().startswith(appliance["pnc"] + appliance["elc"])):
+                    return cols[1].get_text().strip()
+                else:
+                    return ""
+        except:
+            return ""
+            
     
     def login(self):
         """ 
@@ -650,7 +679,6 @@ class Session(object):
 
             self._getAppliancesList()
 
-            
 
     def getAppliances(self):
         """
