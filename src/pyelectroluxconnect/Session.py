@@ -8,7 +8,7 @@ import time
 import urllib3
 import zipfile
 
-from pyelectroluxconnect import urls
+from pyelectroluxconnect import urls, constants
 from pathlib import Path
 
 
@@ -255,8 +255,15 @@ class Session(object):
         """
         result = {}
         self._applianceIndex[applianceId]["brand"] = _json["brand"] 
-        self._applianceIndex[applianceId]["group"] = _json["group"] 
-        self._applianceIndex[applianceId]["model"] = _json["model_name"] 
+        self._applianceIndex[applianceId]["group"] = _json["group"]
+
+        # Some devices have an empty model in profile.json
+        if _json["model_name"]:
+            self._applianceIndex[applianceId]["model"] = _json["model_name"]
+        elif _json["pnc"] in constants.PNC_TO_MODEL:
+            self._applianceIndex[applianceId]["model"] = constants.PNC_TO_MODEL[_json["pnc"]]
+        else:
+            self._applianceIndex[applianceId]["model"] = _json["pnc"]
 
         result["id"] = []
         for modules in _json["modules"]:
