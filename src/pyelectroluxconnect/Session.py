@@ -497,7 +497,7 @@ class Session(object):
         if ("unit" in profileItem[1]):
             result[profileItem[0]]["unit"] = profileItem[1]["unit"]
         if(profileItem[1]["data_format"] == "array(struct)"):
-            self._parseApplianceStateItem(result, profileItem[1][key], stateItem)
+            result[profileItem[0]]["list"] = self._parseApplianceStateItem(profileItem[1][key], stateItem)
         return result
 
 
