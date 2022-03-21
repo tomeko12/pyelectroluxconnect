@@ -9,7 +9,7 @@ setuptools.setup(
     description='Interface for Electrolux Connectivity Platform API',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url='http://github.com/tomeko12/pyelectroluxconnect',
+    url='https://github.com/tomeko12/pyelectroluxconnect',
     author='tomeko',
     license='Apache Software License',
     classifiers=[
