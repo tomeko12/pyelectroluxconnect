@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyelectroluxconnect',
-    version='0.1.11',
+    version='0.2.0',
     description='Interface for Electrolux Connectivity Platform API',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -17,7 +17,7 @@ setuptools.setup(
             'License :: OSI Approved :: Apache Software License',
             'Operating System :: OS Independent',
             'Topic :: Home Automation',
-            'Development Status :: 3 - Alpha'
+            'Development Status :: 4 - Beta'
     ],
     keywords='home automation electrolux aeg frigidaire husqvarna',
     package_dir={"": "src"},

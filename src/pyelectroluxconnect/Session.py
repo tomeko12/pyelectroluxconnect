@@ -251,9 +251,10 @@ class Session(object):
 
 
     def _parseProfileModule(self, result, modules):
+        moduleName = modules["path"].split("/")[-1]
         for component in modules["components"]:
             if "hacl" in component:
-                result[component["hacl"]["name"]] = self._parseProfileFileEntry(modules["path"], component)
+                result[f"{moduleName}:{component['hacl']['name']}"] = self._parseProfileFileEntry(modules["path"], component)
             elif "id" in component and "parent_interfaces" in component:
                 _identry = self._parseProfileFileEntry(modules["path"], component)
                 _identry["id"] = component["id"]
@@ -440,7 +441,7 @@ class Session(object):
         result = {}
         if(not raw and len(stats) > 0):
             for _item in stats:
-                _hexHacl = f"0x{_item['haclCode']}"
+                _hexHacl = f"{_item['source']}:0x{_item['haclCode']}"
                 result[_hexHacl] = {key: _item[key] for 
                                     key in _item if key not in 
                                     [
@@ -497,8 +498,8 @@ class Session(object):
                 stepKey = stateItem["numberValue"]
             elif (str(stateItem["numberValue"]) in profileItem[1]["steps"]):
                 stepKey = str(stateItem["numberValue"])
-            elif (("0x" + format(stateItem["numberValue"], "04X")) in profileItem[1]["steps"]):
-                stepKey = "0x" + format(stateItem["numberValue"], "04X")
+            elif (f"0x{format(stateItem['numberValue'], '04X')}" in profileItem[1]["steps"]):
+                stepKey = f"0x{format(stateItem['numberValue'], '04X')}"
             if (stepKey != None and stepKey in profileItem[1]["steps"] and
                 profileItem[1]["steps"][stepKey] not in ["", "UNIT"]):
                 result[profileItem[0]]["valTransl"] = profileItem[1]["steps"][stepKey]["transl"]
@@ -651,7 +652,7 @@ class Session(object):
         
                 soup = BeautifulSoup(_html, 'html.parser')
                 cols = soup.find("table", {"class":"SearchGridView"}).find("tr", {"class":"bottomBorder"}).find_all("td")
-                if(cols[0].get_text().strip().startswith(appliance["pnc"] + appliance["elc"])):
+                if(cols[0].get_text().strip().startswith(f"{appliance['pnc']}{appliance['elc']}")):
                     return cols[1].get_text().strip()
                 else:
                     return ""
@@ -767,16 +768,20 @@ class Session(object):
             applianceId,
             hacl,
             haclValue,
+            destination
             ):
         """
         send hacl value to appliance 
         hacl - parameter (hex format hacl - 0x0000)
         haclValue - value to set (for Container type, list of {Id: value} is required)
+        destination - destination module name, from profile path (NIU, WD1, etc...)
         """
         _paramslList = []
-        if(self._applianceProfiles[applianceId][hacl]["access"] == "read"):
+        if(f"{destination}:{hacl}" not in self._applianceProfiles[applianceId]):
+            raise Exception(f"Unknown destination:hacl combination ({destination}:{hacl})")
+        if(self._applianceProfiles[applianceId][f"{destination}:{hacl}"]["access"] == "read"):
             raise Exception("Read-Only parameter")
-        if("container" in self._applianceProfiles[applianceId][hacl]):
+        if("container" in self._applianceProfiles[applianceId][f"{destination}:{hacl}"]):
             if(not isinstance(haclValue, list)):
                 raise Exception("Container type hacl, value must be list of dicts")
             else:
@@ -784,13 +789,10 @@ class Session(object):
                 _paramsList.extend(haclValue)
         else:
             _paramsList = [{hacl:haclValue}]
-        print(_paramsList)  
-        _dest = self._applianceProfiles[applianceId][hacl]["path"].split('/')[-1:][0]
-        print(_dest)
         self._sendApplianceCommand(
             applianceId, 
             _paramsList, 
-            _dest
+            destination
             )
 
                             

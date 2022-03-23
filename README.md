@@ -67,7 +67,8 @@ for appliance in appllist:
 
 
 #### Get appliance profile 
-List of parameters (HACL's) with allowed values, translations, etc... Note, that not all parameters can be read, or set over ECP.
+List of parameters (HACL's) with allowed values, translations, etc... Note, that not all parameters can be read, or set over ECP.   
+Each parameter is in "module:hacl" form. Module is internal appliance module symbol, hacl is parameter hex symbol, that can be read from or set to module.   
   	
 ```python
 print(ses.getApplianceProfile(appliance))
@@ -98,12 +99,13 @@ ses.setHacl(appliance, hacl, value)
   
 `hacl` - hex number of param (HACL)  
 `value` - value to set (it could be number or list of parameters (for container HACL type))
+`destination` - destination module name, from profile path (`NIU`, `WD1`, etc...)   
    
 washer-dryer examples:
 - set Wash+Dry "Cottons" program, with "Extra Dry" dryness Level:
  
 ```python
-ses.setHacl(appliance, "0x1C09", [{"50":"0x0000"},{"12":"128"},{"6.32":1},{"6.33":1}])
+ses.setHacl(appliance, "0x1C09", [{"50":"0x0000"},{"12":"128"},{"6.32":1},{"6.33":1}], "WD1")
 ```
 
 - pause program:
