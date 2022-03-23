@@ -464,8 +464,10 @@ class Session(object):
 
                     if("steps" in self._applianceProfiles[applianceId][_hexHacl]):
                         for _step in self._applianceProfiles[applianceId][_hexHacl]["steps"]:
-                            if str(_item["numberValue"]) in _step:
+                            if "numberValue" in _item and str(_item["numberValue"]) in _step:
                                 result[_hexHacl]["valueTransl"] = _step[str(_item["numberValue"])]
+                            elif "stringValue" in _item and _item["stringValue"] in _step:
+                                result[_hexHacl]["valueTransl"] = _step[_item["stringValue"]]
                 if("containers" in _item and len(_item["containers"]) > 0):
                     result[_hexHacl]["container"] = self._parseApplianceStateContainer(
                              _item["containers"],
