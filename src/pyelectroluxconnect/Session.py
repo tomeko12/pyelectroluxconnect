@@ -249,6 +249,21 @@ class Session(object):
             
             
 
+
+    def _parseProfileModule(self, result, modules):
+        for component in modules["components"]:
+            if "hacl" in component:
+                result[component["hacl"]["name"]] = self._parseProfileFileEntry(modules["path"], component)
+            elif "id" in component and "parent_interfaces" in component:
+                _identry = self._parseProfileFileEntry(modules["path"], component)
+                _identry["id"] = component["id"]
+                _identry["parent_interfaces"] = component["parent_interfaces"]
+                result["id"].append(_identry)
+        if("modules" in modules):
+            for innermodules in modules["modules"]:      
+                self._parseProfileModule(result, innermodules)
+                
+
     def _parseProfileFile(self, _json, applianceId):
         """
         Parse device profile.json file
@@ -264,14 +279,7 @@ class Session(object):
 
         result["id"] = []
         for modules in _json["modules"]:
-            for component in modules["components"]:
-                if "hacl" in component:
-                    result[component["hacl"]["name"]] = self._parseProfileFileEntry(modules["path"],component)
-                elif "id" in component and "parent_interfaces" in component:
-                    _identry = self._parseProfileFileEntry(modules["path"],component)
-                    _identry["id"] = component["id"]
-                    _identry["parent_interfaces"] = component["parent_interfaces"]
-                    result["id"].append(_identry)
+            self._parseProfileModule(result, modules)
         
         return result
                         
