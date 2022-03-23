@@ -499,7 +499,7 @@ class Session(object):
                 stepKey = str(stateItem["numberValue"])
             elif (("0x" + format(stateItem["numberValue"], "04X")) in profileItem[1]["steps"]):
                 stepKey = "0x" + format(stateItem["numberValue"], "04X")
-            if (stepKey != None and stepKey != "0" and 
+            if (stepKey != None and stepKey in profileItem[1]["steps"] and
                 profileItem[1]["steps"][stepKey] not in ["", "UNIT"]):
                 result[profileItem[0]]["valTransl"] = profileItem[1]["steps"][stepKey]["transl"]
         if ("unit" in profileItem[1]):
