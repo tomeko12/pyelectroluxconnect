@@ -98,7 +98,7 @@ ses.setHacl(appliance, hacl, value)
 ```
   
 `hacl` - hex number of param (HACL)  
-`value` - value to set (it could be number or list of parameters (for container HACL type))
+`value` - value to set (it could be number or list of parameters (for container HACL type))   
 `destination` - destination module name, from profile path (`NIU`, `WD1`, etc...)   
    
 washer-dryer examples:
