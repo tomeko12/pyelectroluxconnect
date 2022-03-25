@@ -272,7 +272,10 @@ class Session(object):
         result = {}
         
         self._applianceIndex[applianceId]["group"] = _json["group"]
-        self._applianceIndex[applianceId]["brand"] = _json["brand"] 
+        if("brand" in _json and _json["brand"] != ""):
+            self._applianceIndex[applianceId]["brand"] = _json["brand"]
+        else:
+            self._applianceIndex[applianceId]["brand"] = "Electrolux"
         if(_json["model_name"] == ""):
             self._applianceIndex[applianceId]["model"] = self._findModel(applianceId)
         else:

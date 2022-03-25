@@ -13,7 +13,7 @@ setuptools.setup(
     author='tomeko',
     license='Apache Software License',
     classifiers=[
-            'Programming Language :: Python :: 3.10',
+            'Programming Language :: Python :: 3.11',
             'License :: OSI Approved :: Apache Software License',
             'Operating System :: OS Independent',
             'Topic :: Home Automation',
