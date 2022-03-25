@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name='pyelectroluxconnect',
-    version='0.2.1',
+    version='0.2.2',
     description='Interface for Electrolux Connectivity Platform API',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -13,7 +13,7 @@ setuptools.setup(
     author='tomeko',
     license='Apache Software License',
     classifiers=[
-            'Programming Language :: Python :: 3.11',
+            'Programming Language :: Python :: 3.10',
             'License :: OSI Approved :: Apache Software License',
             'Operating System :: OS Independent',
             'Topic :: Home Automation',
