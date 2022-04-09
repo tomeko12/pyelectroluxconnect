@@ -192,7 +192,6 @@ class Session(object):
                 self._getApplianceConfiguration(device['appliance_id'])
 
 
-
     def _getApplianceConfiguration(self, applianceId):
         """
         Get appliance configuration file 
@@ -246,23 +245,6 @@ class Session(object):
                     raise Exception("Unable to get device configuration file.")
             else:
                 raise Exception (_json["message"])
-            
-            
-
-
-    def _parseProfileModule(self, result, modules):
-        moduleName = modules["path"].split("/")[-1]
-        for component in modules["components"]:
-            if "hacl" in component:
-                result[f"{moduleName}:{component['hacl']['name']}"] = self._parseProfileFileEntry(modules["path"], component)
-            elif "id" in component and "parent_interfaces" in component:
-                _identry = self._parseProfileFileEntry(modules["path"], component)
-                _identry["id"] = component["id"]
-                _identry["parent_interfaces"] = component["parent_interfaces"]
-                result["id"].append(_identry)
-        if("modules" in modules):
-            for innermodules in modules["modules"]:      
-                self._parseProfileModule(result, innermodules)
                 
 
     def _parseProfileFile(self, _json, applianceId):
@@ -286,8 +268,23 @@ class Session(object):
             self._parseProfileModule(result, modules)
         
         return result
-                        
-                        
+
+
+    def _parseProfileModule(self, result, modules):
+        moduleName = modules["path"].split("/")[-1]
+        for component in modules["components"]:
+            if "hacl" in component:
+                result[f"{moduleName}:{component['hacl']['name']}"] = self._parseProfileFileEntry(modules["path"], component)
+                result[f"{moduleName}:{component['hacl']['name']}"]["source"] = moduleName
+            elif "id" in component and "parent_interfaces" in component:
+                _identry = self._parseProfileFileEntry(modules["path"], component)
+                _identry["id"] = component["id"]
+                _identry["parent_interfaces"] = component["parent_interfaces"]
+                result["id"].append(_identry)
+        if("modules" in modules):
+            for innermodules in modules["modules"]:      
+                self._parseProfileModule(result, innermodules)    
+    
                         
     def _parseProfileFileEntry(self, path, component):
         result = {key: component[key] for 
@@ -305,7 +302,7 @@ class Session(object):
                             "type"
                             ]
                         }
-        result["path"] = path 
+        result["path"] = path
         result["data_format"] =  component["data_format"]["format"]
         if "unit" in component:
             result["unit"] = component["unit"]["source_format"]
@@ -351,9 +348,7 @@ class Session(object):
             for transitem in item["localizations"]:
                 result[item["locale_key"]][transitem["locale"]] = transitem["translation"]
         return result
-    
-    
-    
+
     
     def _parseApplianceProfileContainer(self, applianceId, profileContainer, applianceParsedProfile):
         result = {}
@@ -395,9 +390,8 @@ class Session(object):
             if _idlist["locale_key"] in self._applianceTranslations[applianceId]:
                 result[_idlist["id"]]["nameTransl"] = self._getTranslation(applianceId,_idlist["locale_key"])
         return result
-                
 
-
+    
     def _createApplianceProfile(self, 
                                 applianceId, 
                                 applianceParsedProfile):
@@ -420,6 +414,7 @@ class Session(object):
                             "increment",
                             "path",
                             "type",
+                            "source",
                             ]
                         } 
                 if _profval["locale_key"] in self._applianceTranslations[applianceId]:
