@@ -207,8 +207,8 @@ class Session(object):
 
                 """ Checking proper appliance configuration file exists"""
                 if not((os.path.exists(applianceConfigFilePath)
-                        and (f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
-                             _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"]))):
+                        and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
+                        _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"])):
                     try:
                         _zipFile = self._requestHttp(
                             urls.getApplianceConfigurationFile(deviceConfigId))
@@ -218,8 +218,8 @@ class Session(object):
                         raise RequestError(ex)
 
                 if(os.path.exists(applianceConfigFilePath)
-                   and (f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
-                        _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"])):
+                   and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
+                        _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"]):
                     with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
                         self._applianceTranslations[id] = {}
 
@@ -360,7 +360,7 @@ class Session(object):
                 "unit",
                 "min_value",
                 "max_value",
-                "increment"
+                "increment",
                 "type",
                 "data_format",
             ]
