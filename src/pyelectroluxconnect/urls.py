@@ -10,7 +10,7 @@ X_API_KEY = "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
 BRAND = "Electrolux"
 
 _region_params = {
-    "emea": ["https://api.emea.ecp.electrolux.com", 
+    "emea": ["https://api.emea.ecp.electrolux.com",
              "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35",
              "Electrolux"],
     "apac": ["https://api.apac.ecp.electrolux.com",
@@ -19,21 +19,21 @@ _region_params = {
     "na":   ["https://api.latam.ecp.electrolux.com",
              "dc9cfac1-4a29-4509-9041-9ae4a0572aac",
              "Electrolux-NA"],
-    "latam":["https://api.latam.ecp.electrolux.com",
-             "3aafa8f0-9fd8-454d-97f6-f46e87b280e2",
-             "Electrolux"],
+    "latam": ["https://api.latam.ecp.electrolux.com",
+              "3aafa8f0-9fd8-454d-97f6-f46e87b280e2",
+              "Electrolux"],
     "frigidaire": ["https://api.latam.ecp.electrolux.com",
                    "7ff2358e-8d6d-4cf6-814a-fcb498fa2cf9",
                    "frigidaire"]
-    }
+}
 
 
 def getEcpClientUrl(region):
     if region.lower() in _region_params:
-        return  _region_params[region.lower()][0]
+        return _region_params[region.lower()][0]
     else:
         return BASE_URL
-        
+
 
 def getEcpClientId(region):
     if region.lower() in _region_params:
@@ -41,7 +41,7 @@ def getEcpClientId(region):
     else:
         return X_API_KEY
 
-    
+
 def getEcpClientBrand(region):
     if region.lower() in _region_params:
         return _region_params[region.lower()][2]
@@ -49,36 +49,44 @@ def getEcpClientBrand(region):
         return BRAND
 
 
-#Authenticate (get Session key)
+# Authenticate (get Session key)
 def login():
     return ["{base_url}/authentication/authenticate".format(
         base_url=BASE_URL),
         "POST"
-        ]
+    ]
 
-#Get appliances list registered to account
+# Get appliances list registered to account
+
+
 def getAppliances(username):
     return ["{base_url}/user-appliance-reg/users/{username}/appliances".format(
         base_url=BASE_URL,
         username=re.sub("(?i)\%2f", "f", quote_plus(username))),
         "GET"
-        ]
+    ]
 
-#Get general HACL map 
+# Get general HACL map
+
+
 def getHaclMap():
     return ["{base_url}/config-files/haclmap".format(
         base_url=BASE_URL),
         "GET"
-        ]
+    ]
 
-#Get list of supported appliances    
+# Get list of supported appliances
+
+
 def getApplianceConfigurations():
     return ["{base_url}/config-files/configurations".format(
         base_url=BASE_URL),
         "GET"
-        ]
+    ]
 
-#Get appliance connection state
+# Get appliance connection state
+
+
 def getApplianceConnectionState(appliance):
     return ["{base_url}/elux-ms/appliances/latest?pnc={pnc}&elc={elc}&sn={sn}&states=ConnectivityState&includeSubcomponents=false".format(
         base_url=BASE_URL,
@@ -86,10 +94,12 @@ def getApplianceConnectionState(appliance):
         sn=re.sub("(?i)\%2f", "f", quote_plus(appliance["sn"])),
         elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
         "GET"
-        ]
+    ]
 
-#Get appliance parameter state
-def getApplianceParameterState(appliance,parameter):
+# Get appliance parameter state
+
+
+def getApplianceParameterState(appliance, parameter):
     return ["{base_url}/elux-ms/appliances/latest?pnc={pnc}&elc={elc}&sn={sn}&states={param}&includeSubcomponents=true".format(
         base_url=BASE_URL,
         pnc=re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
@@ -97,9 +107,11 @@ def getApplianceParameterState(appliance,parameter):
         elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"])),
         param=re.sub("(?i)\%2f", "f", quote_plus(parameter))),
         "GET"
-        ]
+    ]
 
-#Get all appliance parameters state
+# Get all appliance parameters state
+
+
 def getApplianceAllStates(appliance):
     return ["{base_url}/elux-ms/appliances/latest?pnc={pnc}&elc={elc}&sn={sn}&includeSubcomponents=true".format(
         base_url=BASE_URL,
@@ -107,9 +119,11 @@ def getApplianceAllStates(appliance):
         sn=re.sub("(?i)\%2f", "f", quote_plus(appliance["sn"])),
         elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
         "GET"
-        ]
+    ]
 
-#Send command do appliance
+# Send command do appliance
+
+
 def setApplianceCommand(appliance):
     return ["{base_url}/commander/remote/sendjson?pnc={pnc}&elc={elc}&sn={sn}&mac={mac}".format(
         base_url=BASE_URL,
@@ -118,9 +132,11 @@ def setApplianceCommand(appliance):
         elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"])),
         mac=re.sub("(?i)\%2f", "f", quote_plus(appliance["mac"]))),
         "POST"
-        ]
+    ]
 
-#Get selected appliance configuration
+# Get selected appliance configuration
+
+
 def getApplianceConfigurationVersion(appliance):
     return ["{base_url}/config-files/configurations/search?pnc={pnc}&elc={elc}&serial_number={sn}".format(
         base_url=BASE_URL,
@@ -128,34 +144,42 @@ def getApplianceConfigurationVersion(appliance):
         sn=re.sub("(?i)\%2f", "f", quote_plus(appliance["sn"])),
         elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
         "GET"
-        ]
+    ]
 
-#Download configuration file
+# Download configuration file
+
+
 def getApplianceConfigurationFile(configurationId):
     return ["{base_url}/config-files/configurations/{configurationId}/bundle".format(
         base_url=BASE_URL,
         configurationId=re.sub("(?i)\%2f", "f", quote_plus(configurationId))),
         "GET"
-        ]
-    
-#Register Client to MQTT broker    
+    ]
+
+# Register Client to MQTT broker
+
+
 def registerMQTT():
     return ["{base_url}/livesubscribe/livestream/register".format(
         base_url=BASE_URL),
         "POST"
-        ]
+    ]
 
-#Unregister Client from MQTT broker    
+# Unregister Client from MQTT broker
+
+
 def unregisterMQTT():
     return ["{base_url}/livesubscribe/livestream/unregister".format(
         base_url=BASE_URL),
         "POST"
-        ]
-    
-#Find docs by PNC
+    ]
+
+# Find docs by PNC
+
+
 def getDocsTable(appliance):
     return ["https://www.electrolux-ui.com/SearchResults.aspx?PNC={_pnc}{_elc}&ModelDenomination=&Language=&DocumentType=&Brand=".format(
-        _pnc = re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
-        _elc = re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
+        _pnc=re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
+        _elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
         "GET"
-        ]
+    ]

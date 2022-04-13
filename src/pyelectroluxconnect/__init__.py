@@ -1,7 +1,7 @@
 """
 A python module to communicate with Elecrolux Connectivity Platform
 """
- 
+
 __all__ = [
     'Error',
     'LoginError',
