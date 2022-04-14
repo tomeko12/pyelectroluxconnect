@@ -94,7 +94,7 @@ print(ses.getApplianceState(appliance, paramName = None, rawOutput = False))
 #### Send param value to appliance
 
 ```python
-ses.setHacl(appliance, hacl, value)
+ses.setHacl(appliance, hacl, value, destination)
 ```
   
 `hacl` - hex number of param (HACL)  
@@ -111,7 +111,7 @@ ses.setHacl(appliance, "0x1C09", [{"50":"0x0000"},{"12":"128"},{"6.32":1},{"6.33
 - pause program:
 
 ```python
-ses.setHacl(appliance, "0x0403", 4)
+ses.setHacl(appliance, "0x0403", 4, "WD1")
 ```
 
 
