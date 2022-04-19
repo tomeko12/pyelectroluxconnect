@@ -313,15 +313,16 @@ class Session(object):
         if "steps" in component:
             _compsteps = {}
             for step in component["steps"]:
-                _compsteps[step["value"]] = {}
-                if "metadata" in step:
-                    if "localization_key" in step["metadata"]:
-                        _compsteps[step["value"]
-                                   ]["locale_key"] = step["metadata"]["localization_key"]
-                else:
-                    _compsteps[step["value"]]["locale_key"] = ""
-                if "key" in step:
-                    _compsteps[step["value"]]["key"] = step["key"]
+                if step["value"] not in _compsteps:
+                    _compsteps[step["value"]] = {}
+                    if "metadata" in step:
+                        if "localization_key" in step["metadata"]:
+                            _compsteps[step["value"]
+                                       ]["locale_key"] = step["metadata"]["localization_key"]
+                    else:
+                        _compsteps[step["value"]]["locale_key"] = ""
+                    if "key" in step:
+                        _compsteps[step["value"]]["key"] = step["key"]
 
             if len(_compsteps) > 0:
                 result["steps"] = _compsteps
