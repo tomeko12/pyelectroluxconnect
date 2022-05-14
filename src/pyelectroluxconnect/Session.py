@@ -7,10 +7,12 @@ import requests
 import time
 import urllib3
 import zipfile
+import logging
 
 from pyelectroluxconnect import urls
 from pathlib import Path
 
+_LOGGER = logging.getLogger(__name__)
 
 def _validate_response(response):
     """ Verify that response is OK """
@@ -27,7 +29,6 @@ class Error(Exception):
 class RequestError(Error):
     """ Wrapped requests.exceptions.RequestException """
     pass
-
 
 class LoginError(Error):
     """ Login failed """
@@ -60,7 +61,6 @@ class Session(object):
             country="US",
             language=None,
             deviceId="CustomDeviceId",
-            raw=False,
             verifySsl=True,
             region="emea",
             regionServer=None,
@@ -72,7 +72,6 @@ class Session(object):
         language - 3-char language code for translations (All - for all delivered languages)
         tokenFileName - file to store auth token
         deviceId - custom id of Electrolux platform client
-        raw - display HTTP requests/responses
         verifySsl - verify Electrolux platform servers certs
         region = region name (currently tested: "emea", "apac", "latam", "na", "frigidaire")
         regionServer - region server URL (default - EMEA server)
@@ -83,7 +82,6 @@ class Session(object):
         self._username = username
         self._password = password
         self._country = country
-        self._raw = raw
         self._language = language
         self._region = region
         self._deviceId = deviceId
@@ -143,8 +141,8 @@ class Session(object):
             "username": self._username
         }
 
-        if self._raw:
-            print("--- creating token by authentication")
+        _LOGGER.debug("Getting new auth token")
+
         try:
             loginResp = json.loads(
                 self._requestHttp(
@@ -152,14 +150,17 @@ class Session(object):
             if loginResp["status"] == "OK":
                 self._sessionToken = loginResp["data"]["sessionKey"]
             else:
+                _LOGGER.error(f'Unable to get session token: {loginResp["message"]}')
                 raise Error(loginResp["message"])
 
         except ResponseError as ex:
             if(ex.status_code == 401
                or json.loads(ex.text)["code"] == "AER0802"
                or json.loads(ex.text)["code"] == "ECP0108"):
+                _LOGGER.error(f'Login error: {json.loads(ex.text)["message"]}')
                 raise LoginError(json.loads(ex.text)["message"]) from None
             else:
+                _LOGGER.error(f'Authenticate error: {json.loads(ex.text)["message"]}')
                 raise Error(json.loads(ex.text)["message"]) from None
 
     def _getAppliancesList(self):
@@ -215,6 +216,7 @@ class Session(object):
                         open(applianceConfigFilePath, "wb").write(
                             _zipFile.content)
                     except requests.exceptions.RequestException as ex:
+                        _LOGGER.error(f'Request error: {str(Error)}')
                         raise RequestError(ex)
 
                 if(os.path.exists(applianceConfigFilePath)
@@ -239,8 +241,10 @@ class Session(object):
                             _profile
                         )
                 else:
+                    _LOGGER.error("Unable to get device configuration file.")
                     raise Exception("Unable to get device configuration file.")
             else:
+                _LOGGER.error(f"Unable to get configuration file version: {_json['message']}")
                 raise Exception(_json["message"])
 
     def _parseProfileFile(self, _json, applianceId):
@@ -255,6 +259,7 @@ class Session(object):
         else:
             self._applianceIndex[applianceId]["brand"] = "Electrolux"
         if(_json["model_name"] == ""):
+            _LOGGER.info("No model name in profile file, try to find in other sites")
             self._applianceIndex[applianceId]["model"] = self._findModel(
                 applianceId)
         else:
@@ -437,9 +442,9 @@ class Session(object):
     def _parseApplianceState(self,
                              stats,
                              applianceId,
-                             raw=False):
+                             rawOutput=False):
         result = {}
-        if(not raw and len(stats) > 0):
+        if(not rawOutput and len(stats) > 0):
             for _item in stats:
                 _hexHacl = f'{_item["source"]}:0x{_item["haclCode"]}'
                 result[_hexHacl] = {key: _item[key] for
@@ -577,7 +582,6 @@ class Session(object):
                 "timestamp": str(int(time.time())),
                 "version": version
             }
-            print(_payload)
             _json = json.loads(self._requestHttp(
                 urls.setApplianceCommand(appliance), _payload).text)
 
@@ -610,12 +614,9 @@ class Session(object):
         if (verifySSL is None):
             verifySSL = self._verifySsl
 
-        if(self._raw is True):
-            print(f'--- url: {operation[1]!s} {operation[0]!s}')
-            if(payload):
-                print("--- request body ---")
-                print(payload)
-                print("--- end request body ---")
+        _LOGGER.debug(f'URL: {operation[1]!s} {operation[0]!s}')
+        if(payload):
+            _LOGGER.debug(f"Request body: {str(payload).replace(self._password,'MaskedPassword').replace(self._username,'MaskedUsername')}")
         try:
             if (operation[1] == "GET"):
                 response = requests.get(operation[0],
@@ -624,17 +625,16 @@ class Session(object):
                 response = requests.post(operation[0], json=payload,
                                          headers=self._headers(), verify=verifySSL)
             else:
-                raise Error("Bad request definition")
+                _LOGGER.error(f"Unsupported request definition: {operation[1]}")
+                raise Error(f"Unsupported request definition: {operation[1]}")
 
-            if(self._raw is True):
-                print("--- respose body---")
-                print(response.text)
-                print("--- raw ending ---")
+            _LOGGER.debug(f"Respose body: {response.text}")
 
             if 2 != response.status_code // 100:
                 raise ResponseError(response.status_code, response.text)
 
         except requests.exceptions.RequestException as ex:
+            _LOGGER.error(f'Request error: {str(Error)}')
             raise RequestError(ex)
 
         _validate_response(response)
@@ -648,6 +648,7 @@ class Session(object):
             from bs4 import BeautifulSoup
 
             appliance = self._applianceIndex.get(applianceId)
+            _LOGGER.info(f"Trying to get model {appliance['pnc']}_{appliance['elc']} info from https://www.electrolux-ui.com/ website")
 
             if(appliance):
                 _html = self._requestHttp(
@@ -671,20 +672,21 @@ class Session(object):
             with open(self._tokenFileName, "r") as cookieFile:
                 self._sessionToken = cookieFile.read().strip()
 
-            if(self._raw):
-                print("--- token file found")
+            _LOGGER.debug(f"Token file {self._tokenFileName} found")
 
             try:
                 self._getAppliancesList()
 
             except ResponseError as ErrorArg:
                 if(ErrorArg.status_code in ("ECP0105", "ECP0201")):
-                    if(self._raw):
-                        print("--- token probably expired")
+                    _LOGGER.warning("Token probably expired")
                     self._sessionToken = None
                     os.remove(self._tokenFileName)
                 else:
+                    _LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")
                     raise Exception(ErrorArg.text) from None
+        else:
+            _LOGGER.debug(f"Token file {self._tokenFileName} not found")
 
         if(self._sessionToken is None):
             self._createToken()
@@ -721,6 +723,7 @@ class Session(object):
                     "timestamp": _json["data"][0]["spkTimestamp"]
                 }
             else:
+                _LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}")
                 raise Exception(_json["message"])
 
         return None
@@ -747,8 +750,9 @@ class Session(object):
 
             if(_json["status"] == "OK"):
                 return self._parseApplianceState(
-                    _json["data"], applianceId, raw=rawOutput)
+                    _json["data"], applianceId, rawOutput=rawOutput)
             else:
+                _LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}")
                 raise Exception(_json["message"])
         return None
 
@@ -776,12 +780,15 @@ class Session(object):
         destination - destination module name, from profile path (NIU, WD1, etc...)
         """
         if(f'{destination}:{hacl}' not in self._applianceProfiles[applianceId]):
+            _LOGGER.error(f'Unable to set HACL {hacl}: Unknown destination:hacl combination ({destination}:{hacl})')
             raise Exception(
                 f'Unknown destination:hacl combination ({destination}:{hacl})')
         if(self._applianceProfiles[applianceId][f'{destination}:{hacl}']["access"] == "read"):
+            _LOGGER.error(f"Unable to set HACL {hacl}: Parameter is read-only (based on profile file)")
             raise Exception("Read-Only parameter")
         if("container" in self._applianceProfiles[applianceId][f'{destination}:{hacl}']):
             if(not isinstance(haclValue, list)):
+                _LOGGER.error(f"Unable to set HACL {hacl}: Container type must be list of dicts")
                 raise Exception(
                     "Container type hacl, value must be list of dicts")
             else:
@@ -812,10 +819,12 @@ class Session(object):
         if(_json["status"] == "ERROR"):
             if(_json["code"] == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
+                _LOGGER.info(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
                 self.unregisterMQTT()
                 _json = json.loads(self._requestHttp(
                     urls.registerMQTT(), None).text)
             else:
+                _LOGGER.error(f"Error while register to Electrolux MQTT broker: {_json['message']}")
                 raise Exception(_json["message"])
 
         if(_json["status"] == "OK"):
@@ -826,6 +835,7 @@ class Session(object):
                 "ClientID": _json["data"]["ClientID"],
             }
         else:
+            _LOGGER.error(f"Error while register to Electrolux MQTT broker: {_json['message']}")
             raise Exception(_json["message"])
 
     def unregisterMQTT(self):

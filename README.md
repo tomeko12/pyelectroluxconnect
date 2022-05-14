@@ -18,7 +18,7 @@ To use this library, there's an account with Electrolux/AEG/Frigidaire app must 
   
 ```python
 import pyelectroluxconnect
-ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomDeviceId", raw = False, verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
+ses = pyelectroluxconnect.Session(username, password, region="emea", tokenFileName = ".electrolux-token", country = "US", language = None, deviceId = "CustomDeviceId", verifySsl = True, regionServer=None, customApiKey=None, customApiBrand=None)
 ```
 
 or minimal input set: 
@@ -35,7 +35,6 @@ where:
 `country` - 2-char country code (default `US`)  
 `language` - 3-char language code for translations (`All` - for all delivered languages, default: `None`)  
 `deviceId` - custom id of client used in ECP, should be unique for every client instance (default: `CustomDeviceId`)  
-`raw` - display HTTP requests/responses (default: `False`)  
 `verifySsl` - verify ECP servers certs (default: `True`)  
 `regionServer` - region server URL (default is based on selected region)   
 `customApiKey` - custom value of "x-ibm-client-id" and "x-api-key" HTTP headers (default is based on selected region)   
@@ -92,7 +91,7 @@ print(ses.getApplianceState(appliance, paramName = None, rawOutput = False))
 
 
 #### Send param value to appliance
-
+Send value to appliance (list of supported appliance destinations (`destination`) and parameters (`hacl`) with allowed values (`value`), You can get with `getApplianceProfile()` method):   
 ```python
 ses.setHacl(appliance, hacl, value, destination)
 ```
