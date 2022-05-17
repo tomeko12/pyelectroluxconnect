@@ -216,7 +216,7 @@ class Session(object):
                         open(applianceConfigFilePath, "wb").write(
                             _zipFile.content)
                     except requests.exceptions.RequestException as ex:
-                        _LOGGER.error(f'Request error: {str(Error)}')
+                        _LOGGER.error(f'Request error: {str(ex)}')
                         raise RequestError(ex)
 
                 if(os.path.exists(applianceConfigFilePath)
@@ -634,7 +634,7 @@ class Session(object):
                 raise ResponseError(response.status_code, response.text)
 
         except requests.exceptions.RequestException as ex:
-            _LOGGER.error(f'Request error: {str(Error)}')
+            _LOGGER.error(f'Request error: {str(ex)}')
             raise RequestError(ex)
 
         _validate_response(response)
@@ -679,7 +679,7 @@ class Session(object):
 
             except ResponseError as ErrorArg:
                 if(ErrorArg.status_code in ("ECP0105", "ECP0201")):
-                    _LOGGER.warning("Token probably expired")
+                    _LOGGER.warning("Token probably expired, trying to get new one.")
                     self._sessionToken = None
                     os.remove(self._tokenFileName)
                 else:
