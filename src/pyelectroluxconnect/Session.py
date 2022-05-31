@@ -474,7 +474,10 @@ class Session(object):
                                     _item["numberValue"])]
                             elif "stringValue" in _item and _item["stringValue"] in _step:
                                 result[_hexHacl]["valueTransl"] = _step[_item["stringValue"]]
-                if("containers" in _item and len(_item["containers"]) > 0):
+                if("containers" in _item and len(_item["containers"]) > 0 and
+                    _hexHacl in self._applianceProfiles[applianceId] and
+                    "container" in self._applianceProfiles[applianceId][_hexHacl]
+                   ):
                     result[_hexHacl]["container"] = self._parseApplianceStateContainer(
                         _item["containers"],
                         self._applianceProfiles[applianceId][_hexHacl]["container"],
