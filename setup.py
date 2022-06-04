@@ -24,7 +24,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="src"),
     install_requires=[
 			'requests>=2.20.0',
-			'bs4>=0.0.1'
+			'beautifulsoup4>=4,<5'
 	],
     package_data={'': ['certificatechain.pem']},
     zip_safe=False,
