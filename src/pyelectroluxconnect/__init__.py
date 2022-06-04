@@ -1,6 +1,4 @@
-"""
-A python module to communicate with Elecrolux Connectivity Platform
-"""
+"""A Python module to communicate with Elecrolux Connectivity Platform."""
 
 __all__ = [
     'Error',
