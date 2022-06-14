@@ -178,13 +178,15 @@ class Session(object):
         for device in _json["data"]:
             if device:
                 self._applianceIndex[device["appliance_id"]] = {
-                    "alias": device["nickname"],
-                    "pnc": device["pnc"],
-                    "elc": device["elc"],
-                    "sn": device["sn"],
-                    "mac": device["mac"],
-                    "cpv": device["cpv"],
+					key: device[key] for
+                      key in device if key in ["pnc", "elc", "sn", "mac", "cpv"]
                 }
+
+                if "nickname" in device:
+                    self._applianceIndex[device["appliance_id"]]["alias"] = device["nickname"]
+                else:
+                    self._applianceIndex[device["appliance_id"]]["alias"] = ""
+
                 self._getApplianceConfiguration(device["appliance_id"])
 
     def _getApplianceConfiguration(self, applianceId):
