@@ -137,12 +137,12 @@ def setApplianceCommand(appliance):
 # Get selected appliance configuration
 
 
-def getApplianceConfigurationVersion(appliance):
+def getApplianceConfigurationVersion(pnc, elc, sn):
     return ["{base_url}/config-files/configurations/search?pnc={pnc}&elc={elc}&serial_number={sn}".format(
         base_url=BASE_URL,
-        pnc=re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
-        sn=re.sub("(?i)\%2f", "f", quote_plus(appliance["sn"])),
-        elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
+        pnc=re.sub("(?i)\%2f", "f", quote_plus(pnc)),
+        sn=re.sub("(?i)\%2f", "f", quote_plus(sn)),
+        elc=re.sub("(?i)\%2f", "f", quote_plus(elc))),
         "GET"
     ]
 
@@ -177,9 +177,9 @@ def unregisterMQTT():
 # Find docs by PNC
 
 
-def getDocsTable(appliance):
+def getDocsTable(pnc, elc):
     return ["https://www.electrolux-ui.com/SearchResults.aspx?PNC={_pnc}{_elc}&ModelDenomination=&Language=&DocumentType=&Brand=".format(
-        _pnc=re.sub("(?i)\%2f", "f", quote_plus(appliance["pnc"])),
-        _elc=re.sub("(?i)\%2f", "f", quote_plus(appliance["elc"]))),
+        _pnc=re.sub("(?i)\%2f", "f", quote_plus(pnc)),
+        _elc=re.sub("(?i)\%2f", "f", quote_plus(elc))),
         "GET"
     ]

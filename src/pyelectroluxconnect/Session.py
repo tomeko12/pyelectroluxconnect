@@ -187,19 +187,24 @@ class Session(object):
                 else:
                     self._applianceIndex[device["appliance_id"]]["alias"] = ""
 
-                self._getApplianceConfiguration(device["appliance_id"])
+                applianceProfile = self._getApplianceConfiguration(self._applianceIndex[device["appliance_id"]]["pnc"], 
+                                                                   self._applianceIndex[device["appliance_id"]]["elc"], 
+                                                                   self._applianceIndex[device["appliance_id"]]["sn"])
+                self._applianceIndex[device["appliance_id"]].update(applianceProfile["Attributes"])
+                self._applianceTranslations[device["appliance_id"]] = applianceProfile["Translations"]
+                self._applianceProfiles[device["appliance_id"]] = applianceProfile["Profiles"]
 
-    def _getApplianceConfiguration(self, applianceId):
+    def _getApplianceConfiguration(self, pnc, elc, sn):
         """
         Get appliance configuration file 
         """
 
-        appliance = self._applianceIndex.get(applianceId)
-
-        if(appliance):
+        result = {}
+        
+        if(pnc and elc and sn):
             _json = json.loads(
                 self._requestHttp(
-                    urls.getApplianceConfigurationVersion(appliance)).text)
+                    urls.getApplianceConfigurationVersion(pnc, elc, sn)).text)
 
             if(_json["status"] == "OK"):
                 applianceConfigFileName = list(
@@ -225,23 +230,30 @@ class Session(object):
                    and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
                         _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"]):
                     with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
-                        self._applianceTranslations[id] = {}
+                        result["Translations"] = {}
 
                         _json = json.loads(
                             archive.read(
                                 f'{archive.namelist()[0]}profile.json'))
-                        _profile = self._parseProfileFile(_json, applianceId)
+                        _profile = self._parseProfileFile(_json)
+
+                        result["Attributes"] = self._getApplianceAttributes(_json, pnc, elc)
+                        result["Attributes"]["pnc"] = pnc
+                        result["Attributes"]["elc"] = elc
+                        result["Attributes"]["sn"] = sn
+                        
 
                         _json = json.loads(
                             archive.read(
                                 f'{archive.namelist()[0]}{next(item for item in _json["bundles"] if item["type"] == "Localization")["path"]}'))
 
-                        self._applianceTranslations[applianceId] = self._parseLocale_bundleFile(
+                        result["Translations"] = self._parseLocale_bundleFile(
                             _json)
-                        self._applianceProfiles[applianceId] = self._createApplianceProfile(
-                            applianceId,
+                        result["Profiles"] = self._createApplianceProfile(
+                            result["Translations"],
                             _profile
                         )
+                        return result
                 else:
                     _LOGGER.error("Unable to get device configuration file.")
                     raise Exception("Unable to get device configuration file.")
@@ -249,28 +261,36 @@ class Session(object):
                 _LOGGER.error(f"Unable to get configuration file version: {_json['message']}")
                 raise Exception(_json["message"])
 
-    def _parseProfileFile(self, _json, applianceId):
+    def _parseProfileFile(self, _json):
         """
         Parse device profile.json file
         """
         result = {}
-
-        self._applianceIndex[applianceId]["group"] = _json["group"]
-        if("brand" in _json and _json["brand"] != ""):
-            self._applianceIndex[applianceId]["brand"] = _json["brand"]
-        else:
-            self._applianceIndex[applianceId]["brand"] = "Electrolux"
-        if(_json["model_name"] == ""):
-            _LOGGER.info("No model name in profile file, try to find in other sites")
-            self._applianceIndex[applianceId]["model"] = self._findModel(
-                applianceId)
-        else:
-            self._applianceIndex[applianceId]["model"] = _json["model_name"]
-
         result["id"] = []
         for modules in _json["modules"]:
             self._parseProfileModule(result, modules)
 
+        return result
+
+    def _getApplianceAttributes(self, _json, pnc, elc):
+        """
+        Get appliance attributes from json
+        """
+        
+        result = {}
+        for attr in ["group", "brand", "model_name"]:
+            if attr in _json and _json[attr] != "":
+                result["model" if attr == "model_name" else attr] = _json[attr]
+            else:
+                match attr:
+                    case "group":
+                        result["group"] = ""
+                    case "brand":
+                        result["brand"] = "Electrolux"
+                    case "model_name":
+                        _LOGGER.info("No model name in profile file, try to find in other sites")
+                        result["model"] = self._findModel(
+                            pnc, elc)
         return result
 
     def _parseProfileModule(self, result, modules):
@@ -354,7 +374,10 @@ class Session(object):
                                            ] = transitem["translation"]
         return result
 
-    def _parseApplianceProfileContainer(self, applianceId, profileContainer, applianceParsedProfile):
+    def _parseApplianceProfileContainer(self, 
+                                        applianceTranslations, 
+                                        profileContainer, 
+                                        applianceParsedProfile):
         result = {}
         _idlists = list(filter(lambda item: f'{profileContainer["namespace"]}.{profileContainer["name"]}' in item["parent_interfaces"],
                                applianceParsedProfile["id"]))
@@ -375,12 +398,12 @@ class Session(object):
             }
             if(_idlist["type"] == "Container"):
                 _subcontainer = self._parseApplianceProfileContainer(
-                    applianceId, _idlist, applianceParsedProfile)
+                    applianceTranslations, _idlist, applianceParsedProfile)
                 result[_idlist["id"]].update(_subcontainer)
             elif(_idlist["data_format"] == "array(struct)"):
                 _subcontainer = {}
                 _subcontainer["list"] = self._parseApplianceProfileContainer(
-                    applianceId, _idlist, applianceParsedProfile)
+                    applianceTranslations, _idlist, applianceParsedProfile)
                 result[_idlist["id"]].update(_subcontainer)
             else:
                 result[_idlist["id"]]["data_format"] = _idlist["data_format"]
@@ -391,17 +414,17 @@ class Session(object):
                     result[_idlist["id"]]["steps"][_containerstepkey] = {}
                     if("locale_key" in _containerstepvalue):
                         result[_idlist["id"]]["steps"][_containerstepkey]["transl"] = self._getTranslation(
-                            applianceId, _containerstepvalue["locale_key"])
+                            applianceTranslations, _containerstepvalue["locale_key"])
                     if("key" in _containerstepvalue):
                         result[_idlist["id"]
                                ]["steps"][_containerstepkey]["key"] = _containerstepvalue["key"]
-            if _idlist["locale_key"] in self._applianceTranslations[applianceId]:
+            if _idlist["locale_key"] in applianceTranslations:
                 result[_idlist["id"]]["nameTransl"] = self._getTranslation(
-                    applianceId, _idlist["locale_key"])
+                    applianceTranslations, _idlist["locale_key"])
         return result
 
     def _createApplianceProfile(self,
-                                applianceId,
+                                applianceTranslations,
                                 applianceParsedProfile):
         result = {}
         if(len(applianceParsedProfile) == 0):
@@ -425,19 +448,19 @@ class Session(object):
                     "source",
                 ]
                 }
-                if _profval["locale_key"] in self._applianceTranslations[applianceId]:
+                if _profval["locale_key"] in applianceTranslations:
                     result[_profkey]["nameTransl"] = self._getTranslation(
-                        applianceId, _profval["locale_key"])
+                        applianceTranslations, _profval["locale_key"])
                 if("steps" in _profval):
                     result[_profkey]["steps"] = []
                     for _stepval, _steplangkey in _profval["steps"].items():
-                        if("locale_key" in _steplangkey and _steplangkey["locale_key"] in self._applianceTranslations[applianceId]):
+                        if("locale_key" in _steplangkey and _steplangkey["locale_key"] in applianceTranslations):
                             result[_profkey]["steps"].append(
-                                {_stepval: self._getTranslation(applianceId, _steplangkey["locale_key"])})
+                                {_stepval: self._getTranslation(applianceTranslations, _steplangkey["locale_key"])})
                 if("type" in _profval and (_profval["type"] == "Container" or _profval["data_format"] == "array(struct)")):
                     result[_profkey]["container"] = []
                     _container = self._parseApplianceProfileContainer(
-                        applianceId, _profval, applianceParsedProfile)
+                        applianceTranslations, _profval, applianceParsedProfile)
                     result[_profkey]["container"].append(_container)
         return result
 
@@ -593,7 +616,7 @@ class Session(object):
             if(_json["status"] != "OK"):
                 raise Error(_json["message"])
 
-    def _getTranslation(self, applianceId, langKey):
+    def _getTranslation(self, applianceTranslations, langKey):
         """
         Getting translation based on selected languages
         """
@@ -601,14 +624,14 @@ class Session(object):
         if(langKey is None or langKey == ""):
             return ""
         _translation = None
-        if(langKey in self._applianceTranslations[applianceId]):
+        if(langKey in applianceTranslations):
             if(self._language == "All"):
-                _translation = self._applianceTranslations[applianceId][langKey]
-            elif(self._language in self._applianceTranslations[applianceId][langKey]
-                 and self._applianceTranslations[applianceId][langKey][self._language] != ""):
-                _translation = self._applianceTranslations[applianceId][langKey][self._language]
-            elif("eng" in self._applianceTranslations[applianceId][langKey]):
-                _translation = self._applianceTranslations[applianceId][langKey]["eng"]
+                _translation = applianceTranslations[langKey]
+            elif(self._language in applianceTranslations[langKey]
+                 and applianceTranslations[langKey][self._language] != ""):
+                _translation = applianceTranslations[langKey][self._language]
+            elif("eng" in applianceTranslations[langKey]):
+                _translation = applianceTranslations[langKey]["eng"]
         return _translation
 
     def _requestHttp(self, operation, payload=None, verifySSL=None):
@@ -645,24 +668,23 @@ class Session(object):
         _validate_response(response)
         return response
 
-    def _findModel(self, applianceId):
+    def _findModel(self, pnc, elc):
         """
         Find model on https://www.electrolux-ui.com/ website
         """
         try:
             from bs4 import BeautifulSoup
 
-            appliance = self._applianceIndex.get(applianceId)
             _LOGGER.info(f"Trying to get model {appliance['pnc']}_{appliance['elc']} info from https://www.electrolux-ui.com/ website")
 
-            if(appliance):
+            if(pnc and elc):
                 _html = self._requestHttp(
-                    urls.getDocsTable(appliance), verifySSL=True).text
+                    urls.getDocsTable(pnc, elc), verifySSL=True).text
 
                 soup = BeautifulSoup(_html, "html.parser")
                 cols = soup.find("table", {"class": "SearchGridView"}).find(
                     "tr", {"class": "bottomBorder"}).find_all("td")
-                if(cols[0].get_text().strip().startswith(f'{appliance["pnc"]}{appliance["elc"]}')):
+                if(cols[0].get_text().strip().startswith(f'{pnc}{elc}')):
                     return cols[1].get_text().strip()
                 else:
                     return ""
@@ -771,6 +793,18 @@ class Session(object):
             self.login()
 
         return self._applianceProfiles[applianceId]
+
+    def getCustomPncApplianceProfile(self,
+                            pnc, elc, sn):
+        """
+        Get custom defined appliance profile (params used by appliance, supported hacl's, and Id's, with translations)
+        pnc - 9 digits PNC number
+        elc - 2 digits ELC number
+        sn - serial number
+        """
+
+        return self._getApplianceConfiguration(pnc, elc, sn)
+
 
     def setHacl(self,
                 applianceId,
