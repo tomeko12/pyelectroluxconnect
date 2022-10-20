@@ -675,7 +675,7 @@ class Session(object):
         try:
             from bs4 import BeautifulSoup
 
-            _LOGGER.info(f"Trying to get model {appliance['pnc']}_{appliance['elc']} info from https://www.electrolux-ui.com/ website")
+            _LOGGER.info(f"Trying to get model {pnc}_{elc} info from https://www.electrolux-ui.com/ website")
 
             if(pnc and elc):
                 _html = self._requestHttp(
