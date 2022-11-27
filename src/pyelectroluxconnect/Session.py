@@ -8,6 +8,7 @@ import time
 import urllib3
 import zipfile
 import logging
+import traceback
 
 from pyelectroluxconnect import urls
 from pathlib import Path
@@ -57,7 +58,7 @@ class Session(object):
             self,
             username,
             password,
-            tokenFileName="~/.electrolux-token",
+            tokenFileName="~/.pyelectroluxconnect/electrolux-token.txt",
             country="US",
             language=None,
             deviceId="CustomDeviceId",
@@ -151,18 +152,15 @@ class Session(object):
                 if loginResp["status"] == "OK":
                     self._sessionToken = loginResp["data"]["sessionKey"]
                 else:
-                    _LOGGER.error(f'Unable to get session token: {loginResp["message"]}')
-                    raise Error(loginResp["message"])
+                    raise Error(f'Unable to get session token: {loginResp["message"]}')
     
             except ResponseError as ex:
                 if(ex.status_code == 401
                    or json.loads(ex.text)["code"] == "AER0802"
                    or json.loads(ex.text)["code"] == "ECP0108"):
-                    _LOGGER.error(f'Login error: {json.loads(ex.text)["message"]}')
-                    raise LoginError(json.loads(ex.text)["message"]) from None
+                    raise LoginError(f'Login error: {json.loads(ex.text)["message"]}') from None
                 else:
-                    _LOGGER.error(f'Authenticate error: {json.loads(ex.text)["message"]}')
-                    raise Error(json.loads(ex.text)["message"]) from None
+                    raise Error(f'Authenticate error: {json.loads(ex.text)["message"]}') from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -218,7 +216,7 @@ class Session(object):
                         _json["data"][0]["configuration_file"])[0]
                     deviceConfigId = _json["data"][0]["configuration_id"]
                     applianceConfigFilePath = os.path.join(
-                        str(Path.home()), applianceConfigFileName)
+                        str(Path.home()), f'.pyelectroluxconnect/{applianceConfigFileName}')
     
                     """ Checking proper appliance configuration file exists"""
                     if not((os.path.exists(applianceConfigFilePath)
@@ -230,12 +228,12 @@ class Session(object):
                             open(applianceConfigFilePath, "wb").write(
                                 _zipFile.content)
                         except requests.exceptions.RequestException as ex:
-                            _LOGGER.error(f'Request error: {str(ex)}')
                             raise RequestError(ex)
     
                     if(os.path.exists(applianceConfigFilePath)
                        and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
                             _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"]):
+
                         with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
                             result["Translations"] = {}
     
@@ -262,11 +260,9 @@ class Session(object):
                             )
                             return result
                     else:
-                        _LOGGER.error("Unable to get device configuration file.")
                         raise Exception("Unable to get device configuration file.")
                 else:
-                    _LOGGER.error(f"Unable to get configuration file version: {_json['message']}")
-                    raise Exception(_json["message"])
+                    raise Exception(f"Unable to get configuration file version: {_json['message']}")
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -303,8 +299,7 @@ class Session(object):
                             result["brand"] = "Electrolux"
                         case "model_name":
                             _LOGGER.info("No model name in profile file, try to find in other sites")
-                            result["model"] = self._findModel(
-                                pnc, elc)
+                            result["model"] = self._findModel(pnc, elc)[0]
             return result
         except Exception as err:
             _LOGGER.error(err)
@@ -587,7 +582,7 @@ class Session(object):
                     profileItem[1][key], stateItem)
             return result
         except Exception as err:
-            _LOGGER.error(err)
+            _LOGGER.exception(err)
             raise
 
     def _parseApplianceStateContainer(self,
@@ -728,24 +723,51 @@ class Session(object):
         """
         Find model on https://www.electrolux-ui.com/ website
         """
+        appliancesModelFilePath = os.path.join(
+                        str(Path.home()), f'.pyelectroluxconnect/models.json')
+        appliancesModels = {}
+        model = ""
+        brand = ""
+        
+        try:
+            if(os.path.exists(appliancesModelFilePath)):
+                with open(appliancesModelFilePath, "r") as modelsFile:
+                    appliancesModels = json.load(modelsFile)
+                    if(f'{pnc}{elc}' in appliancesModels):
+                        model = appliancesModels[f'{pnc}{elc}']["model"]
+                        brand = appliancesModels[f'{pnc}{elc}']["brand"]
+                        return (model, brand)
+        except:
+            pass
+             
         try:
             from bs4 import BeautifulSoup
 
             _LOGGER.info(f"Trying to get model {pnc}_{elc} info from https://www.electrolux-ui.com/ website")
 
             if(pnc and elc):
-                _html = self._requestHttp(
-                    urls.getDocsTable(pnc, elc), verifySSL=True).text
+#                _html = self._requestHttp(
+#                    urls.getDocsTable(pnc, elc), verifySSL=True).text
+                _html = requests.get(urls.getDocsTable(pnc, elc)[0], verify=True, timeout=10).text
 
                 soup = BeautifulSoup(_html, "html.parser")
                 cols = soup.find("table", {"class": "SearchGridView"}).find(
                     "tr", {"class": "bottomBorder"}).find_all("td")
                 if(cols[0].get_text().strip().startswith(f'{pnc}{elc}')):
-                    return cols[1].get_text().strip()
-                else:
-                    return ""
+                    model = cols[1].get_text().strip()
+                    brand = cols[4].get_text().strip()
+                    if(os.path.exists(appliancesModelFilePath)):
+                        with open(appliancesModelFilePath, "r") as modelsFile:
+                            appliancesModels = json.load(modelsFile)
+                    appliancesModels[f'{pnc}{elc}'] = {}
+                    appliancesModels[f'{pnc}{elc}']["model"] = model
+                    appliancesModels[f'{pnc}{elc}']["brand"] = brand    
+                    with open(appliancesModelFilePath, "w") as modelsFile:
+                        json.dump(appliancesModels, modelsFile)
         except Exception:
-            return ""
+            pass
+
+        return (model, brand)
 
     def login(self):
         """ 
@@ -767,13 +789,14 @@ class Session(object):
                         self._sessionToken = None
                         os.remove(self._tokenFileName)
                     else:
-                        _LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")
-                        raise Exception(ErrorArg.text) from None
+                        raise Exception(_LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")) from None
             else:
                 _LOGGER.debug(f"Token file {self._tokenFileName} not found")
     
             if(self._sessionToken is None):
                 self._createToken()
+                if(not os.path.exists(os.path.expanduser("~/.pyelectroluxconnect/"))):
+                    os.mkdir(os.path.expanduser("~/.pyelectroluxconnect/"))
                 with open(self._tokenFileName, "w") as tokenFile:
                     tokenFile.write(self._sessionToken)
     
@@ -840,8 +863,7 @@ class Session(object):
                     return self._parseApplianceState(
                         _json["data"], self._applianceProfiles[applianceId], rawOutput=rawOutput)
                 else:
-                    _LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}")
-                    raise Exception(_json["message"])
+                    raise Exception(_LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}"))
             return None
         except Exception as err:
             _LOGGER.error(err)
@@ -907,17 +929,13 @@ class Session(object):
         """
         try:
             if(f'{destination}:{hacl}' not in self._applianceProfiles[applianceId]):
-                _LOGGER.error(f'Unable to set HACL {hacl}: Unknown destination:hacl combination ({destination}:{hacl})')
                 raise Exception(
-                    f'Unknown destination:hacl combination ({destination}:{hacl})')
+                    f'Unable to set HACL {hacl}: Unknown destination:hacl combination ({destination}:{hacl})')
             if(self._applianceProfiles[applianceId][f'{destination}:{hacl}']["access"] == "read"):
-                _LOGGER.error(f"Unable to set HACL {hacl}: Parameter is read-only (based on profile file)")
-                raise Exception("Read-Only parameter")
+                raise Exception(f"Unable to set HACL {hacl}: Parameter is read-only (based on profile file)")
             if("container" in self._applianceProfiles[applianceId][f'{destination}:{hacl}']):
                 if(not isinstance(haclValue, list)):
-                    _LOGGER.error(f"Unable to set HACL {hacl}: Container type must be list of dicts")
-                    raise Exception(
-                        "Container type hacl, value must be list of dicts")
+                    raise Exception(f"Unable to set HACL {hacl}: Container type must be list of dicts")
                 else:
                     _paramsList = [{hacl: "Container"}]
                     _paramsList.extend(haclValue)
