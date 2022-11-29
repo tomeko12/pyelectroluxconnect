@@ -298,7 +298,7 @@ class Session(object):
                         case "brand":
                             result["brand"] = "Electrolux"
                         case "model_name":
-                            _LOGGER.info("No model name in profile file, try to find in other sites")
+                            _LOGGER.debug("No model name in profile file, try to find in other sites")
                             result["model"] = self._findModel(pnc, elc)[0]
             return result
         except Exception as err:
@@ -743,7 +743,7 @@ class Session(object):
         try:
             from bs4 import BeautifulSoup
 
-            _LOGGER.info(f"Trying to get model {pnc}_{elc} info from https://www.electrolux-ui.com/ website")
+            _LOGGER.debug(f"Trying to get model {pnc}_{elc} info from https://www.electrolux-ui.com/ website")
 
             if(pnc and elc):
 #                _html = self._requestHttp(
@@ -967,7 +967,7 @@ class Session(object):
         if(_json["status"] == "ERROR"):
             if(_json["code"] == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
-                _LOGGER.info(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
+                _LOGGER.warn(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
                 self.unregisterMQTT()
                 _json = json.loads(self._requestHttp(
                     urls.registerMQTT(), None).text)
