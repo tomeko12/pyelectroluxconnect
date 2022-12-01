@@ -145,22 +145,25 @@ class Session(object):
     
             _LOGGER.debug("Getting new auth token")
     
-            try:
-                loginResp = json.loads(
-                    self._requestHttp(
-                        urls.login(), _payload).text)
-                if loginResp["status"] == "OK":
-                    self._sessionToken = loginResp["data"]["sessionKey"]
-                else:
-                    raise Error(f'Unable to get session token: {loginResp["message"]}')
+            loginResp = self._requestApi(urls.login(), _payload)
+            if loginResp["status"] == "OK":
+                self._sessionToken = loginResp["data"]["sessionKey"]
+                try:
+                    if(not os.path.exists(os.path.expanduser("~/.pyelectroluxconnect/"))):
+                        os.mkdir(os.path.expanduser("~/.pyelectroluxconnect/"))
+                    with open(self._tokenFileName, "w") as tokenFile:
+                        tokenFile.write(self._sessionToken)
+                except OSError as err:
+                    _LOGGER.error(f'Unable to write session token to file {self._tokenFileName}. {err.text}')
+            else:
+                raise Error(f'Unable to get session token: {loginResp["message"]}')
     
-            except ResponseError as ex:
-                if(ex.status_code == 401
-                   or json.loads(ex.text)["code"] == "AER0802"
-                   or json.loads(ex.text)["code"] == "ECP0108"):
-                    raise LoginError(f'Login error: {json.loads(ex.text)["message"]}') from None
-                else:
-                    raise Error(f'Authenticate error: {json.loads(ex.text)["message"]}') from None
+        except ResponseError as err:
+            if(err.status_code == 401
+               or json.loads(err.text)["code"] in ("AER0802", "ECP0108")):
+                raise LoginError(f'Login error: {json.loads(err.text)["message"]}') from None
+            else:
+                raise Error(f'Authenticate error: {json.loads(err.text)["message"]}') from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -170,9 +173,7 @@ class Session(object):
         Get user registered appliances list
         """
         try:
-            _json = json.loads(
-                self._requestHttp(
-                    urls.getAppliances(self._username)).text)
+            _json = self._requestApi(urls.getAppliances(self._username))
     
             if(_json["status"] == "ERROR"):
                 raise ResponseError(_json["code"], _json["message"])
@@ -207,9 +208,7 @@ class Session(object):
             result = {}
             
             if(pnc and elc and sn):
-                _json = json.loads(
-                    self._requestHttp(
-                        urls.getApplianceConfigurationVersion(pnc, elc, sn)).text)
+                _json = self._requestApi(urls.getApplianceConfigurationVersion(pnc, elc, sn))
     
                 if(_json["status"] == "OK"):
                     applianceConfigFileName = list(
@@ -298,7 +297,6 @@ class Session(object):
                         case "brand":
                             result["brand"] = "Electrolux"
                         case "model_name":
-                            _LOGGER.debug("No model name in profile file, try to find in other sites")
                             result["model"] = self._findModel(pnc, elc)[0]
             return result
         except Exception as err:
@@ -655,8 +653,7 @@ class Session(object):
                     "timestamp": str(int(time.time())),
                     "version": version
                 }
-                _json = json.loads(self._requestHttp(
-                    urls.setApplianceCommand(appliance), _payload).text)
+                _json = self._requestApi(urls.setApplianceCommand(appliance), _payload)
     
                 if(_json["status"] != "OK"):
                     raise Error(_json["message"])
@@ -718,6 +715,29 @@ class Session(object):
 
         _validate_response(response)
         return response
+    
+    
+    def _requestApi(self, operation, payload=None):
+        
+        try:
+            jsonResponse = json.loads(self._requestHttp(
+                        operation, payload).text)
+            
+            if(jsonResponse["status"] == "ERROR" and
+                jsonResponse["code"] in("ECP0105", "ECP0201", "ECP2004")):
+                
+                _LOGGER.warn(f'Token error: "{jsonResponse["code"]}", trying to get new one.')
+                self._createToken()
+                jsonResponse = json.loads(self._requestHttp(
+                        operation, payload).text)
+            return jsonResponse
+
+        except Exception as err:
+            _LOGGER.error(err)
+            raise
+        
+            
+        
 
     def _findModel(self, pnc, elc):
         """
@@ -730,6 +750,7 @@ class Session(object):
         brand = ""
         
         try:
+            _LOGGER.debug(f"Trying to get model {pnc}_{elc} info from cache")
             if(os.path.exists(appliancesModelFilePath)):
                 with open(appliancesModelFilePath, "r") as modelsFile:
                     appliancesModels = json.load(modelsFile)
@@ -774,33 +795,20 @@ class Session(object):
         Login to API
         """
         try:
-            if(os.path.exists(self._tokenFileName)):
-                with open(self._tokenFileName, "r") as cookieFile:
-                    self._sessionToken = cookieFile.read().strip()
-    
-                _LOGGER.debug(f"Token file {self._tokenFileName} found")
-    
+            try:
+                if(os.path.exists(self._tokenFileName)):
+                    with open(self._tokenFileName, "r") as tokenFile:
+                        self._sessionToken = tokenFile.read().strip()
+                else:
+                    _LOGGER.debug(f"Token file {self._tokenFileName} not found, trying to get new one.")
+                    self._createToken()
+            except OSError as err:
+                _LOGGER.error(f'Unable to open token file {self._tokenFileName}: {err.text}')
+            else:
                 try:
                     self._getAppliancesList()
-    
-                except ResponseError as ErrorArg:
-                    if(ErrorArg.status_code in ("ECP0105", "ECP0201")):
-                        _LOGGER.warning("Token probably expired, trying to get new one.")
-                        self._sessionToken = None
-                        os.remove(self._tokenFileName)
-                    else:
-                        raise Exception(_LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")) from None
-            else:
-                _LOGGER.debug(f"Token file {self._tokenFileName} not found")
-    
-            if(self._sessionToken is None):
-                self._createToken()
-                if(not os.path.exists(os.path.expanduser("~/.pyelectroluxconnect/"))):
-                    os.mkdir(os.path.expanduser("~/.pyelectroluxconnect/"))
-                with open(self._tokenFileName, "w") as tokenFile:
-                    tokenFile.write(self._sessionToken)
-    
-                self._getAppliancesList()
+                except Exception as ErrorArg:
+                    raise Exception(_LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")) from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -810,7 +818,7 @@ class Session(object):
         Get user registered appliances
         """
         if(self._sessionToken is None or
-           self._applianceIndex is None):
+           self._applianceIndex is {}):
             self.login()
 
         return self._applianceIndex
@@ -823,8 +831,8 @@ class Session(object):
         appliance = self._applianceIndex.get(applianceId)
 
         if(appliance):
-            _json = json.loads(self._requestHttp(
-                urls.getApplianceConnectionState(appliance)).text)
+            _json = self._requestApi(
+                urls.getApplianceConnectionState(appliance))
 
             if(_json["status"] == "OK"):
                 return {
@@ -851,13 +859,13 @@ class Session(object):
             appliance = self._applianceIndex.get(applianceId)
     
             if(appliance):
+                _json = None
                 if(paramName):
-                    response = self._requestHttp(
+                    _json = self._requestApi(
                         urls.getApplianceParameterState(appliance, paramName))
                 else:
-                    response = self._requestHttp(
+                    _json = self._requestApi(
                         urls.getApplianceAllStates(appliance))
-                _json = json.loads(response.text)
     
                 if(_json["status"] == "OK"):
                     return self._parseApplianceState(
@@ -962,15 +970,15 @@ class Session(object):
                         DeviceToken as password
 
         """
-        _json = json.loads(self._requestHttp(urls.registerMQTT(), None).text)
+        _json = self._requestApi(urls.registerMQTT(), None)
 
         if(_json["status"] == "ERROR"):
             if(_json["code"] == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
                 _LOGGER.warn(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
                 self.unregisterMQTT()
-                _json = json.loads(self._requestHttp(
-                    urls.registerMQTT(), None).text)
+                _json = self._requestApi(
+                    urls.registerMQTT(), None)
             else:
                 _LOGGER.error(f"Error while register to Electrolux MQTT broker: {_json['message']}")
                 raise Exception(_json["message"])
@@ -990,4 +998,4 @@ class Session(object):
         """
         Unregister device from Electrolux MQTT broker
         """
-        self._requestHttp(urls.unregisterMQTT(), None)
+        self._requestApi(urls.unregisterMQTT(), None)
