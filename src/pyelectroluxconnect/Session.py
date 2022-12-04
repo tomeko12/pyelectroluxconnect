@@ -48,6 +48,18 @@ class ResponseError(Error):
         self.status_code = status_code
         self.text = text
 
+class ApiResponseError(Error):
+    """ Unexcpected response """
+
+    def __init__(self, status_code, message):
+        super(ApiResponseError, self).__init__(
+            "Invalid response"
+            ", status code: {0} - Data: {1}".format(
+                status_code,
+                message))
+        self.status_code = status_code
+        self.message = message
+
 
 class Session(object):
     """
@@ -143,27 +155,22 @@ class Session(object):
                 "username": self._username
             }
     
-            _LOGGER.debug("Getting new auth token")
+            _LOGGER.warn("Getting new auth token")
     
             loginResp = self._requestApi(urls.login(), _payload)
-            if loginResp["status"] == "OK":
-                self._sessionToken = loginResp["data"]["sessionKey"]
-                try:
-                    if(not os.path.exists(os.path.expanduser("~/.pyelectroluxconnect/"))):
-                        os.mkdir(os.path.expanduser("~/.pyelectroluxconnect/"))
-                    with open(self._tokenFileName, "w") as tokenFile:
-                        tokenFile.write(self._sessionToken)
-                except OSError as err:
-                    _LOGGER.error(f'Unable to write session token to file {self._tokenFileName}. {err.text}')
-            else:
-                raise Error(f'Unable to get session token: {loginResp["message"]}')
-    
+            self._sessionToken = loginResp["sessionKey"]
+            try:
+                if(not os.path.exists(os.path.expanduser("~/.pyelectroluxconnect/"))):
+                    os.mkdir(os.path.expanduser("~/.pyelectroluxconnect/"))
+                with open(self._tokenFileName, "w") as tokenFile:
+                    tokenFile.write(self._sessionToken)
+            except OSError as err:
+                _LOGGER.error(f'Unable to write session token to file {self._tokenFileName}. {err.text}')
         except ResponseError as err:
-            if(err.status_code == 401
-               or json.loads(err.text)["code"] in ("AER0802", "ECP0108")):
-                raise LoginError(f'Login error: {json.loads(err.text)["message"]}') from None
+            if(err.status_code == 401 or err.status_code in ("AER0802", "ECP0108")): 
+                raise LoginError(f'Login error: {err.text}') from None
             else:
-                raise Error(f'Authenticate error: {json.loads(err.text)["message"]}') from None
+                raise Error(f'Authenticate error: {err.text}') from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -175,10 +182,7 @@ class Session(object):
         try:
             _json = self._requestApi(urls.getAppliances(self._username))
     
-            if(_json["status"] == "ERROR"):
-                raise ResponseError(_json["code"], _json["message"])
-    
-            for device in _json["data"]:
+            for device in _json:
                 if device:
                     self._applianceIndex[device["appliance_id"]] = {
     					key: device[key] for
@@ -197,6 +201,9 @@ class Session(object):
                     self._applianceTranslations[device["appliance_id"]] = applianceProfile["Translations"]
                     self._applianceProfiles[device["appliance_id"]] = applianceProfile["Profiles"]
         except Exception as err:
+            _LOGGER.exception(f'Exception in _getAppliancesList: {err}')
+            raise Error(err) from None
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -210,59 +217,59 @@ class Session(object):
             if(pnc and elc and sn):
                 _json = self._requestApi(urls.getApplianceConfigurationVersion(pnc, elc, sn))
     
-                if(_json["status"] == "OK"):
-                    applianceConfigFileName = list(
-                        _json["data"][0]["configuration_file"])[0]
-                    deviceConfigId = _json["data"][0]["configuration_id"]
-                    applianceConfigFilePath = os.path.join(
-                        str(Path.home()), f'.pyelectroluxconnect/{applianceConfigFileName}')
-    
-                    """ Checking proper appliance configuration file exists"""
-                    if not((os.path.exists(applianceConfigFilePath)
-                            and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
-                            _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"])):
-                        try:
-                            _zipFile = self._requestHttp(
-                                urls.getApplianceConfigurationFile(deviceConfigId))
-                            open(applianceConfigFilePath, "wb").write(
-                                _zipFile.content)
-                        except requests.exceptions.RequestException as ex:
-                            raise RequestError(ex)
-    
-                    if(os.path.exists(applianceConfigFilePath)
-                       and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
-                            _json["data"][0]["configuration_file"][applianceConfigFileName]["digest"]):
+                applianceConfigFileName = list(
+                    _json[0]["configuration_file"])[0]
+                deviceConfigId = _json[0]["configuration_id"]
+                applianceConfigFilePath = os.path.join(
+                    str(Path.home()), f'.pyelectroluxconnect/{applianceConfigFileName}')
 
-                        with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
-                            result["Translations"] = {}
-    
-                            _json = json.loads(
-                                archive.read(
-                                    f'{archive.namelist()[0]}profile.json'))
-                            _profile = self._parseProfileFile(_json)
-    
-                            result["Attributes"] = self._getApplianceAttributes(_json, pnc, elc)
-                            result["Attributes"]["pnc"] = pnc
-                            result["Attributes"]["elc"] = elc
-                            result["Attributes"]["sn"] = sn
-                            
-    
-                            _json = json.loads(
-                                archive.read(
-                                    f'{archive.namelist()[0]}{next(item for item in _json["bundles"] if item["type"] == "Localization")["path"]}'))
-    
-                            result["Translations"] = self._parseLocale_bundleFile(
-                                _json)
-                            result["Profiles"] = self._createApplianceProfile(
-                                result["Translations"],
-                                _profile
-                            )
-                            return result
-                    else:
-                        raise Exception("Unable to get device configuration file.")
+                """ Checking proper appliance configuration file exists"""
+                if not((os.path.exists(applianceConfigFilePath)
+                        and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
+                        _json[0]["configuration_file"][applianceConfigFileName]["digest"])):
+                    try:
+                        _zipFile = self._requestHttp(
+                            urls.getApplianceConfigurationFile(deviceConfigId))
+                        open(applianceConfigFilePath, "wb").write(
+                            _zipFile.content)
+                    except requests.exceptions.RequestException as ex:
+                        raise RequestError(ex)
+
+                if(os.path.exists(applianceConfigFilePath)
+                   and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
+                        _json[0]["configuration_file"][applianceConfigFileName]["digest"]):
+
+                    with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
+                        result["Translations"] = {}
+
+                        _json = json.loads(
+                            archive.read(
+                                f'{archive.namelist()[0]}profile.json'))
+                        _profile = self._parseProfileFile(_json)
+
+                        result["Attributes"] = self._getApplianceAttributes(_json, pnc, elc)
+                        result["Attributes"]["pnc"] = pnc
+                        result["Attributes"]["elc"] = elc
+                        result["Attributes"]["sn"] = sn
+                        
+
+                        _json = json.loads(
+                            archive.read(
+                                f'{archive.namelist()[0]}{next(item for item in _json["bundles"] if item["type"] == "Localization")["path"]}'))
+
+                        result["Translations"] = self._parseLocale_bundleFile(
+                            _json)
+                        result["Profiles"] = self._createApplianceProfile(
+                            result["Translations"],
+                            _profile
+                        )
+                        return result
                 else:
-                    raise Exception(f"Unable to get configuration file version: {_json['message']}")
+                    raise Exception("Unable to get device configuration file.")
         except Exception as err:
+            _LOGGER.exception(f'Exception in _getApplianceConfiguration({pnc},{elc},{sn}): {err}')
+            raise Error(err) from None
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -278,6 +285,9 @@ class Session(object):
     
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseProfileFile({_json}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -300,6 +310,9 @@ class Session(object):
                             result["model"] = self._findModel(pnc, elc)[0]
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _getApplianceAttributes({_json},{pnc},{elc}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -321,6 +334,9 @@ class Session(object):
                 for innermodules in modules["modules"]:
                     self._parseProfileModule(result, innermodules)
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseProfileModule({result, modules}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
         
@@ -377,6 +393,9 @@ class Session(object):
                     result.update(_compperm)
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseProfileFileEntry({path}, {component}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -393,6 +412,9 @@ class Session(object):
                                                ] = transitem["translation"]
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseLocale_bundleFile({_json}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -446,6 +468,9 @@ class Session(object):
                         applianceTranslations, _idlist["locale_key"])
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseApplianceProfileContainer({applianceTranslations},{profileContainer},{applianceParsedProfile}): {err}')
+            raise Error(err) from None
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -491,6 +516,9 @@ class Session(object):
                         result[_profkey]["container"].append(_container)
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _createApplianceProfile({applianceTranslations},{applianceParsedProfile}): {err}')
+            raise Error(err) from None
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -542,6 +570,9 @@ class Session(object):
                 result = status
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseApplianceState({status},{profile},{rawOutput}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -580,7 +611,10 @@ class Session(object):
                     profileItem[1][key], stateItem)
             return result
         except Exception as err:
-            _LOGGER.exception(err)
+            _LOGGER.exception(f'Exception in _parseApplianceStateItem({profileItem},{stateItem}): {err}')
+            raise Error(err)
+        except Error as err:
+            _LOGGER.error(err)
             raise
 
     def _parseApplianceStateContainer(self,
@@ -608,6 +642,9 @@ class Session(object):
                                     )
             return result
         except Exception as err:
+            _LOGGER.exception(f'Exception in _parseApplianceStateContainer({stateContainer},{profileContainer}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -654,10 +691,12 @@ class Session(object):
                     "version": version
                 }
                 _json = self._requestApi(urls.setApplianceCommand(appliance), _payload)
-    
-                if(_json["status"] != "OK"):
-                    raise Error(_json["message"])
+        except Error:
+            raise
         except Exception as err:
+            _LOGGER.exception(f'Exception in _sendApplianceCommand({applianceId},{params},{destination},{source},{operationMode},{version}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -679,6 +718,9 @@ class Session(object):
                     _translation = applianceTranslations[langKey]["eng"]
             return _translation
         except Exception as err:
+            _LOGGER.exception(f'Exception in _getTranslation({applianceTranslations}, {langKey}): {err}')
+            raise Error(err)
+        except Error as err:
             _LOGGER.error(err)
             raise
 
@@ -690,9 +732,10 @@ class Session(object):
         if (verifySSL is None):
             verifySSL = self._verifySsl
 
-        _LOGGER.debug(f'URL: {operation[1]!s} {operation[0]!s}')
+        _LOGGER.debug(f'HTTP Request {operation[1]!s}: {operation[0]!s}')
+        _LOGGER.debug(f"HTTP Request headers: {self._headers()}")
         if(payload):
-            _LOGGER.debug(f"Request body: {str(payload).replace(self._password,'MaskedPassword').replace(self._username,'MaskedUsername')}")
+            _LOGGER.debug(f"HTTP Request body: {str(payload).replace(self._password,'MaskedPassword').replace(self._username,'MaskedUsername')}")
         try:
             if (operation[1] == "GET"):
                 response = requests.get(operation[0],
@@ -704,36 +747,58 @@ class Session(object):
                 _LOGGER.error(f"Unsupported request definition: {operation[1]}")
                 raise Error(f"Unsupported request definition: {operation[1]}")
 
-            _LOGGER.debug(f"Respose body: {response.text}")
+            _LOGGER.debug(f"HTTP Respose body: {response.text}")
 
             if 2 != response.status_code // 100:
-                raise ResponseError(response.status_code, response.text)
+                raise ResponseError(response.status_code, response.text) from None
 
         except requests.exceptions.RequestException as ex:
-            _LOGGER.error(f'Request error: {str(ex)}')
-            raise RequestError(ex)
+            raise RequestError(ex) from None
 
-        _validate_response(response)
         return response
     
     
     def _requestApi(self, operation, payload=None):
-        
+        """
+        Request to API
+        returns JSON response
+        """
         try:
-            jsonResponse = json.loads(self._requestHttp(
+            jsonresponse =  json.loads(self._requestHttp(
                         operation, payload).text)
-            
-            if(jsonResponse["status"] == "ERROR" and
-                jsonResponse["code"] in("ECP0105", "ECP0201", "ECP2004")):
-                
-                _LOGGER.warn(f'Token error: "{jsonResponse["code"]}", trying to get new one.')
+            if(jsonresponse["status"] != "OK"):
+                raise ApiResponseError(jsonresponse["code"], jsonresponse["message"]) from None
+            return jsonresponse["data"]
+        
+        except RequestError as err:
+            _LOGGER.error(f'API request error: {err}')
+            raise Exception(err) from None
+        except ApiResponseError as err:
+            if(err.status_code in ("ECP0105", "ECP0201", "ECP2004")):
+                _LOGGER.warn(f'API token error {err.status_code}: {err.message}')
                 self._createToken()
-                jsonResponse = json.loads(self._requestHttp(
-                        operation, payload).text)
-            return jsonResponse
-
+                return json.loads(self._requestHttp(
+                        operation, payload).text)["data"]
+            else:
+                _LOGGER.error(f'API response error {err.status_code}: {err.message}')
+                raise ResponseError(err.status_code, err.message) from None
+        except ResponseError as err:
+            message = err.text
+            errcode = err.status_code
+            
+            try:
+                message = json.loads(err.text)
+                if("message" in message):
+                    message = message["message"]
+                if("code" in message):
+                    errcode = message["code"]
+                raise ResponseError(errcode, message) from None
+            except ValueError:
+                _LOGGER.error(f'HTTP response error {err.status_code}: {err.text}')
+                raise ResponseError(err.status_code, err.text) from None
+            raise ResponseError(err.status_code, err.text) from None
         except Exception as err:
-            _LOGGER.error(err)
+            _LOGGER.error(f'API request error: {err}')
             raise
         
             
@@ -808,7 +873,8 @@ class Session(object):
                 try:
                     self._getAppliancesList()
                 except Exception as ErrorArg:
-                    raise Exception(_LOGGER.error(f"Error while get Appliances list: {ErrorArg.text}")) from None
+                    _LOGGER.error(f"Error while get Appliances list: {ErrorArg}")
+                    raise Exception(ErrorArg) from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -837,8 +903,8 @@ class Session(object):
             if(_json["status"] == "OK"):
                 return {
                     "id": applianceId,
-                    "status": _json["data"][0]["stringValue"],
-                    "timestamp": _json["data"][0]["spkTimestamp"]
+                    "status": _json[0]["stringValue"],
+                    "timestamp": _json[0]["spkTimestamp"]
                 }
             else:
                 _LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}")
@@ -867,11 +933,8 @@ class Session(object):
                     _json = self._requestApi(
                         urls.getApplianceAllStates(appliance))
     
-                if(_json["status"] == "OK"):
-                    return self._parseApplianceState(
-                        _json["data"], self._applianceProfiles[applianceId], rawOutput=rawOutput)
-                else:
-                    raise Exception(_LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}"))
+                return self._parseApplianceState(
+                     _json, self._applianceProfiles[applianceId], rawOutput=rawOutput)
             return None
         except Exception as err:
             _LOGGER.error(err)
@@ -970,29 +1033,26 @@ class Session(object):
                         DeviceToken as password
 
         """
-        _json = self._requestApi(urls.registerMQTT(), None)
-
-        if(_json["status"] == "ERROR"):
-            if(_json["code"] == "ECP0206"):
+        try:
+            _json = self._requestApi(urls.registerMQTT(), None)
+        except ResponseError as err:
+            if(err.status_code == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
                 _LOGGER.warn(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
                 self.unregisterMQTT()
                 _json = self._requestApi(
                     urls.registerMQTT(), None)
             else:
-                _LOGGER.error(f"Error while register to Electrolux MQTT broker: {_json['message']}")
-                raise Exception(_json["message"])
-
-        if(_json["status"] == "OK"):
+                raise
+        finally:
             return {
-                "Url": _json["data"]["MQTTURL"],
-                "OrgId": _json["data"]["ECP_org_id"],
-                "DeviceToken": _json["data"]["DeviceToken"],
-                "ClientID": _json["data"]["ClientID"],
+                "Url": _json["MQTTURL"],
+                "OrgId": _json["ECP_org_id"],
+                "DeviceToken": _json["DeviceToken"],
+                "ClientID": _json["ClientID"],
             }
-        else:
-            _LOGGER.error(f"Error while register to Electrolux MQTT broker: {_json['message']}")
-            raise Exception(_json["message"])
+
+
 
     def unregisterMQTT(self):
         """
