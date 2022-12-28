@@ -19,7 +19,7 @@ def _validate_response(response):
     """ Verify that response is OK """
     if response.status_code == 200:
         return
-    raise ResponseError(response.status_code, response.text)
+    raise HttpResponseError(response.status_code, response.text)
 
 
 class Error(Exception):
@@ -27,7 +27,7 @@ class Error(Exception):
     pass
 
 
-class RequestError(Error):
+class HttpRequestError(Error):
     """ Wrapped requests.exceptions.RequestException """
     pass
 
@@ -35,13 +35,17 @@ class LoginError(Error):
     """ Login failed """
     pass
 
+class AuthError(Error):
+    """ Authfailed """
+    pass
 
-class ResponseError(Error):
+
+class HttpResponseError(Error):
     """ Unexcpected response """
 
     def __init__(self, status_code, text):
-        super(ResponseError, self).__init__(
-            "Invalid response"
+        super(HttpResponseError, self).__init__(
+            "Invalid http response"
             ", status code: {0} - Data: {1}".format(
                 status_code,
                 text))
@@ -53,8 +57,7 @@ class ApiResponseError(Error):
 
     def __init__(self, status_code, message):
         super(ApiResponseError, self).__init__(
-            "Invalid response"
-            ", status code: {0} - Data: {1}".format(
+            "Invalid API response: {1} ({0})".format(
                 status_code,
                 message))
         self.status_code = status_code
@@ -166,11 +169,11 @@ class Session(object):
                     tokenFile.write(self._sessionToken)
             except OSError as err:
                 _LOGGER.error(f'Unable to write session token to file {self._tokenFileName}. {err.text}')
-        except ResponseError as err:
+        except ApiResponseError as err:
             if(err.status_code == 401 or err.status_code in ("AER0802", "ECP0108")): 
-                raise LoginError(f'Login error: {err.text}') from None
+                raise LoginError(f'{err.message} ({err.status_code})') from None
             else:
-                raise Error(f'Authenticate error: {err.text}') from None
+                raise ApiResponseError(err.status_code, err.message) from None
         except Exception as err:
             _LOGGER.error(err)
             raise
@@ -200,6 +203,10 @@ class Session(object):
                     self._applianceIndex[device["appliance_id"]].update(applianceProfile["Attributes"])
                     self._applianceTranslations[device["appliance_id"]] = applianceProfile["Translations"]
                     self._applianceProfiles[device["appliance_id"]] = applianceProfile["Profiles"]
+        except LoginError as err:
+            raise LoginError(err) from None
+        except AuthError as err:
+            raise AuthError(err) from None
         except Exception as err:
             _LOGGER.exception(f'Exception in _getAppliancesList: {err}')
             raise Error(err) from None
@@ -233,7 +240,7 @@ class Session(object):
                         open(applianceConfigFilePath, "wb").write(
                             _zipFile.content)
                     except requests.exceptions.RequestException as ex:
-                        raise RequestError(ex)
+                        raise HttpRequestError(ex)
 
                 if(os.path.exists(applianceConfigFilePath)
                    and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
@@ -750,10 +757,10 @@ class Session(object):
             _LOGGER.debug(f"HTTP Respose body: {response.text}")
 
             if 2 != response.status_code // 100:
-                raise ResponseError(response.status_code, response.text) from None
+                raise HttpResponseError(response.status_code, response.text) from None
 
         except requests.exceptions.RequestException as ex:
-            raise RequestError(ex) from None
+            raise HttpRequestError(ex) from None
 
         return response
     
@@ -770,33 +777,38 @@ class Session(object):
                 raise ApiResponseError(jsonresponse["code"], jsonresponse["message"]) from None
             return jsonresponse["data"]
         
-        except RequestError as err:
+        except HttpRequestError as err:
             _LOGGER.error(f'API request error: {err}')
             raise Exception(err) from None
         except ApiResponseError as err:
-            if(err.status_code in ("ECP0105", "ECP0201", "ECP2004")):
+            if(err.status_code in ("ECP0105", "ECP2004")):
                 _LOGGER.warn(f'API token error {err.status_code}: {err.message}')
-                self._createToken()
-                return json.loads(self._requestHttp(
-                        operation, payload).text)["data"]
+                try:
+                    self._createToken()
+                    return json.loads(self._requestHttp(
+                            operation, payload).text)["data"]
+                except LoginError as err:
+                    raise LoginError(err) from None
+                except AuthError(err):
+                    raise AuthError(err) from None
             else:
                 _LOGGER.error(f'API response error {err.status_code}: {err.message}')
-                raise ResponseError(err.status_code, err.message) from None
-        except ResponseError as err:
+                raise ApiResponseError(err.status_code, err.message) from None
+        except HttpResponseError as err:
             message = err.text
             errcode = err.status_code
             
             try:
                 message = json.loads(err.text)
-                if("message" in message):
-                    message = message["message"]
                 if("code" in message):
                     errcode = message["code"]
-                raise ResponseError(errcode, message) from None
+                if("message" in message):
+                    message = message["message"]
+                raise ApiResponseError(errcode, message) from None
             except ValueError:
                 _LOGGER.error(f'HTTP response error {err.status_code}: {err.text}')
-                raise ResponseError(err.status_code, err.text) from None
-            raise ResponseError(err.status_code, err.text) from None
+                raise HttpResponseError(err.status_code, err.text) from None
+            raise HttpResponseError(err.status_code, err.text) from None
         except Exception as err:
             _LOGGER.error(f'API request error: {err}')
             raise
@@ -872,6 +884,10 @@ class Session(object):
             else:
                 try:
                     self._getAppliancesList()
+                except LoginError as err:
+                    raise LoginError(err) from None
+                except AuthError as err:
+                    raise AuthError(err) from None
                 except Exception as ErrorArg:
                     _LOGGER.error(f"Error while get Appliances list: {ErrorArg}")
                     raise Exception(ErrorArg) from None
@@ -1035,7 +1051,7 @@ class Session(object):
         """
         try:
             _json = self._requestApi(urls.registerMQTT(), None)
-        except ResponseError as err:
+        except ApiResponseError as err:
             if(err.status_code == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
                 _LOGGER.warn(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
