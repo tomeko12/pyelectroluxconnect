@@ -916,16 +916,12 @@ class Session(object):
             _json = self._requestApi(
                 urls.getApplianceConnectionState(appliance))
 
-            if(_json["status"] == "OK"):
-                return {
-                    "id": applianceId,
-                    "status": _json[0]["stringValue"],
-                    "timestamp": _json[0]["spkTimestamp"]
-                }
-            else:
-                _LOGGER.error(f"Error while get appliance {applianceId} state: {_json['message']}")
-                raise Exception(_json["message"])
-
+            return {
+                "id": applianceId,
+                "status": _json[0]["stringValue"],
+                "timestamp": _json[0]["spkTimestamp"]
+            }
+ 
         return None
 
     def getApplianceState(self,
