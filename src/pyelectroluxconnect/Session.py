@@ -670,14 +670,27 @@ class Session(object):
     
             components = []
     
+            containerHacl = ""
             for param in params:
                 if(not isinstance(param, dict)):
                     raise Error("Parameters to send must be list of dicts")
                 for key in param:
-                    if(param[key] == "Container"):
+                    dataFormat = ""
+                    if param[key] == "Container":
+                        containerHacl = key
+                        dataFormat = self._applianceProfiles[applianceId][f'{destination}:{key}']['data_format']
+                    elif containerHacl != "":
+                        dataFormat = self._applianceProfiles[applianceId][f'{destination}:{containerHacl}']["container"][0][key]['data_format']
+                    else:
+                        dataFormat = self._applianceProfiles[applianceId][f'{destination}:{key}']['data_format']
+                     
+                    if((dataFormat == "struct" or dataFormat.startswith("array")) and param[key] == "Container"):
                         components.append(
                             {"name": key.removeprefix("0x"), "value": "Container"})
-                    else:
+                    elif dataFormat =="string":
+                        components.append(
+                            {"name": key.removeprefix("0x"), "value": param[key].removeprefix("0x")})
+                    elif dataFormat.startswith("int") or dataFormat.startswith("uint")  or dataFormat.startswith("bool"):
                         _intVal = 0
                         if(isinstance(param[key], str)
                            and param[key].startswith("0x")):
@@ -688,6 +701,8 @@ class Session(object):
                             _intVal = param[key]
                         components.append(
                             {"name": key.removeprefix("0x"), "value": _intVal})
+                    else:
+                        raise Error(f"Unsupported data_format {dataFormat} for {key}:{param[key]}")
             if(appliance):
                 _payload = {
                     "components": components,
