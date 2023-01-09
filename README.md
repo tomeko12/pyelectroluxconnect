@@ -124,7 +124,7 @@ returns parameters required to login to Electrolux MQTT broker with any MQTT cli
 `Url` - Host of MQTT broker (with port number)   
 `OrgId` - Organization ID   
 `ClientId` - MQTT Client ID   
-`DeviceToken` - Token required to authentication (for IBM broker, use `use-token-auth` as username, DeviceToken as password)   
+`DeviceToken` - Token required to authentication (for IBM broker, use string `use-token-auth` as username, DeviceToken as password)   
 
 List of MQTT topics (QoS = 0) to subscribe:
 - `iot-2/cmd/live_stream/fmt/+`   
