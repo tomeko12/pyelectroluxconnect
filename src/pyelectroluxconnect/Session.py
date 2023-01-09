@@ -688,9 +688,13 @@ class Session(object):
                         components.append(
                             {"name": key.removeprefix("0x"), "value": "Container"})
                     elif dataFormat =="string":
-                        components.append(
-                            {"name": key.removeprefix("0x"), "value": param[key].removeprefix("0x")})
-                    elif dataFormat.startswith("int") or dataFormat.startswith("uint")  or dataFormat.startswith("bool"):
+                        if(isinstance(param[key], str)):
+                            components.append(
+                                {"name": key.removeprefix("0x"), "value": param[key].removeprefix("0x")})
+                        else:
+                            components.append(
+                                {"name": key.removeprefix("0x"), "value": str(param[key])})
+                    elif dataFormat.startswith("int") or dataFormat.startswith("uint") or dataFormat.startswith("bool"):
                         _intVal = 0
                         if(isinstance(param[key], str)
                            and param[key].startswith("0x")):
@@ -702,7 +706,7 @@ class Session(object):
                         components.append(
                             {"name": key.removeprefix("0x"), "value": _intVal})
                     else:
-                        raise Error(f"Unsupported data_format {dataFormat} for {key}:{param[key]}")
+                        raise Error(f"Unsupported data_format {dataFormat} for {key}:{param[key]}") from None
             if(appliance):
                 _payload = {
                     "components": components,
@@ -1030,7 +1034,7 @@ class Session(object):
                 raise Exception(
                     f'Unable to set HACL {hacl}: Unknown destination:hacl combination ({destination}:{hacl})')
             if(self._applianceProfiles[applianceId][f'{destination}:{hacl}']["access"] == "read"):
-                raise Exception(f"Unable to set HACL {hacl}: Parameter is read-only (based on profile file)")
+                _LOGGER.warning(f"Trying to set read only HACL {hacl} parameter (based on profile file)")
             if("container" in self._applianceProfiles[applianceId][f'{destination}:{hacl}']):
                 if(not isinstance(haclValue, list)):
                     raise Exception(f"Unable to set HACL {hacl}: Container type must be list of dicts")
