@@ -123,7 +123,7 @@ print(ses.registerMQTT())
 returns parameters required to login to Electrolux MQTT broker with any MQTT client:   
 `Url` - Host of MQTT broker (with port number)   
 `OrgId` - Organization ID   
-`ClientId` - MQTT Client ID   
+`ClientID` - MQTT Client ID   
 `DeviceToken` - Token required to authentication (for IBM broker, use string `use-token-auth` as username, DeviceToken as password)   
 
 List of MQTT topics (QoS = 0) to subscribe:
@@ -136,5 +136,14 @@ List of MQTT topics (QoS = 0) to subscribe:
 ses.unregisterMQTT()
 ```
  
+#### Parse received MQTT message
+
+```python
+print(ses.getMqttState(mqttJsonPayload))
+```
+
+Parse message from MQTT broker, and return in getApplianceState(...) like form.
+`mqttJsonPayload` - MQTT message payload in JSON form.
+
 ## Disclaimer
 This library was not made by AB Electrolux. It is not official, not developed, and not supported by AB Electrolux.

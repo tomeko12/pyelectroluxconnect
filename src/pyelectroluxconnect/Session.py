@@ -654,6 +654,154 @@ class Session(object):
         except Error as err:
             _LOGGER.error(err)
             raise
+        
+    def _parseMqttState(self, status, profile):
+        
+        try:
+            
+            result = {}
+            if(len(status) > 0):
+                _hexHacl = f'{status["payload"]["source"]}:0x{status["payload"]["components"][0]["id"]}'
+                _item = status["payload"]["components"][0]
+                
+                result[_hexHacl] = {"name": _item["name"],
+                                    "source": status["payload"]["source"],
+                                    "spkTimestamp": status["payload"]["timestamp"]}
+                if(_hexHacl in profile):
+                        result[_hexHacl].update(
+                            {key: profile[_hexHacl][key] for
+                             key in profile[_hexHacl] if key in
+                             [
+                                "visibility",
+                                "access",
+                                "unit",
+                                "nameTransl"
+                            ]
+                            })
+    
+                if(_item["value"] != "Container"):
+                    if(profile[_hexHacl]["data_format"] == "boolean"):
+                        if(_item["value"] == "1"):
+                            result[_hexHacl].update({"stringValue": "true"})
+                            result[_hexHacl].update({"numberValue": 1})
+                        else:
+                            result[_hexHacl].update({"stringValue": "false"})
+                            result[_hexHacl].update({"numberValue": 0})
+                    else:
+                        result[_hexHacl].update({"stringValue":_item["value"]})
+                        if("number" in _item):
+                            result[_hexHacl].update({"numberValue":_item["number"]})
+                        else:
+                            try:
+                                result[_hexHacl].update({"numberValue":int(_item["value"])})
+                            except Exception:
+                                pass
+                    
+        
+                    if("steps" in profile[_hexHacl]):
+                        for _step in profile[_hexHacl]["steps"]:
+                            if "number" in _item and str(_item["number"]) in _step:
+                                result[_hexHacl]["valueTransl"] = _step[str(
+                                    _item["number"])]
+                            elif "value" in _item and _item["value"] in _step:
+                                result[_hexHacl]["valueTransl"] = _step[_item["value"]]
+                elif("container" in profile[_hexHacl]):
+                    result[_hexHacl]["container"] = self._parseMqttStateContainer(
+                                status["payload"]["components"][1:],
+                                profile[_hexHacl]["container"],
+                            )
+                return result
+        except Exception as err:
+            _LOGGER.exception(f'Exception in _parseMqttState({status},{profile}): {err}')
+            raise Error(err)
+        except Error as err:
+            _LOGGER.error(err)
+            raise
+        
+    def _parseMqttStateItem(self,
+                            profileItem,
+                            stateItem):
+        try:
+            result = {}
+            result[profileItem[0]] = {key: profileItem[1][key] for
+                                      key in profileItem[1] if key not in
+                                      [
+                "steps",
+                "increment",
+                "min_value",
+                "max_value"]}
+            result[profileItem[0]].update({"propertyName": stateItem["name"],
+                                           "tId": stateItem["id"],
+                                           "group": stateItem["group"]})
+            if(profileItem[1]["data_format"] == "boolean"):
+                if(stateItem["value"] == "1"):
+                    result[profileItem[0]].update({"stringValue": "true"})
+                    result[profileItem[0]].update({"numberValue": 1})
+                else:
+                    result[profileItem[0]].update({"stringValue": "false"})
+                    result[profileItem[0]].update({"numberValue": 0})
+            else:
+                if ("value" in stateItem):
+                    result[profileItem[0]].update({"stringValue": stateItem["value"]})
+                if ("number" in stateItem):
+                    result[profileItem[0]].update({"numberValue": stateItem["number"]})
+            if ("steps" in profileItem[1]):
+                stepKey = None
+                if ("number" in stateItem and stateItem["number"] in profileItem[1]["steps"]):
+                    stepKey = stateItem["number"]
+                elif ("number" in stateItem and str(stateItem["number"]) in profileItem[1]["steps"]):
+                    stepKey = str(stateItem["number"])
+                elif ("number" in stateItem and f'0x{format(stateItem["number"], "04X")}' in profileItem[1]["steps"]):
+                    stepKey = f'0x{format(stateItem["number"], "04X")}'
+                if (stepKey is not None and stepKey in profileItem[1]["steps"] and
+                        profileItem[1]["steps"][stepKey] not in ["", "UNIT"]):
+                    result[profileItem[0]
+                           ]["valTransl"] = profileItem[1]["steps"][stepKey]["transl"]
+            if ("unit" in profileItem[1]):
+                result[profileItem[0]]["unit"] = profileItem[1]["unit"]
+            if(profileItem[1]["data_format"] == "array(struct)"):
+                result[profileItem[0]]["list"] = self._parseMqttStateItem(
+                    profileItem[1][key], stateItem)
+            return result
+        except Exception as err:
+            _LOGGER.exception(f'Exception in _parseMqttStateItem({profileItem},{stateItem}): {err}')
+            raise Error(err)
+        except Error as err:
+            _LOGGER.error(err)
+            raise
+        
+
+    
+    def _parseMqttStateContainer(self,
+                                 stateContainer,
+                                 profileContainer):
+        try:
+            result = {}
+            if(stateContainer):
+                for profileItem in profileContainer[0].items():
+                    if(profileItem[1]["name"] != "List"):
+                        for stateItem in stateContainer:
+                            if stateItem["name"] == profileItem[1]["name"]:
+                                result.update(
+                                    self._parseMqttStateItem(
+                                        profileItem, stateItem)
+                                )
+                    else:
+                        result["list"] = {}
+                        for profileListItem in profileItem[1]["list"].items():
+                            for stateItem in stateContainer:
+                                if stateItem["name"] == profileListItem[1]["name"]:
+                                    result["list"].update(
+                                        self._parseMqttStateItem(
+                                            profileListItem, stateItem)
+                                    )
+            return result
+        except Exception as err:
+            _LOGGER.exception(f'Exception in _parseMqttStateContainer({stateContainer},{profileContainer}): {err}')
+            raise Error(err)
+        except Error as err:
+            _LOGGER.error(err)
+            raise
 
     def _sendApplianceCommand(self,
                               applianceId,
@@ -970,6 +1118,26 @@ class Session(object):
         except Exception as err:
             _LOGGER.error(err)
             raise
+        
+    def getMqttState(self, mqttJson):
+        """
+        Parse message from MQTT broker, and return in getApplianceState(...) like form.
+        mqttJson - message from mqtt broker
+        """
+        try:
+            _json =  json.loads(mqttJson)
+            appliance = self._applianceIndex.get(_json["device"]["deviceId"])
+    
+            if(appliance):
+                
+  
+                return {_json["device"]["deviceId"]: self._parseMqttState(
+                     _json, self._applianceProfiles[_json["device"]["deviceId"]])}
+            return None
+        except Exception as err:
+            _LOGGER.error(err)
+            raise
+
 
     def getApplianceProfile(self,
                             applianceId):
