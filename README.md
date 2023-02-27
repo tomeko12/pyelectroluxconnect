@@ -145,5 +145,36 @@ print(ses.getMqttState(mqttJsonPayload))
 Parse message from MQTT broker, and return in getApplianceState(...) like form.
 `mqttJsonPayload` - MQTT message payload in JSON form.
 
+#### Very simple MQTT example to receive online appliance state changes from ECP MQTT broker
+
+```python
+import paho.mqtt.client as mqtt
+import pyelectroluxconnect
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+    client.subscribe("iot-2/cmd/live_stream/fmt/json", 0)
+
+def on_message(client, userdata, msg):
+    print(ses.getMqttState(msg.payload))
+
+ses = pyelectroluxconnect.Session(login, passwd, language = "pol", region="emea",  deviceId='MQTTHA2')
+ses.login()
+
+mqtt_params = ses.registerMQTT()
+
+client = mqtt.Client(client_id = mqtt_params["ClientID"])
+client.tls_set(ca_certs = ses.getSSLCert())
+client.username_pw_set("use-token-auth", mqtt_params["DeviceToken"])
+    
+client.on_connect = on_connect
+client.on_message = on_message
+    
+client.connect(mqtt_params["Url"].split(":")[0], int(mqtt_params["Url"].split(":")[1]), 60)
+    
+while True:
+    client.loop()
+```
+
 ## Disclaimer
 This library was not made by AB Electrolux. It is not official, not developed, and not supported by AB Electrolux.

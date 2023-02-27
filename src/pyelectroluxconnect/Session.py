@@ -1258,3 +1258,7 @@ class Session(object):
         Unregister device from Electrolux MQTT broker
         """
         self._requestApi(urls.unregisterMQTT(), None)
+
+
+    def getSSLCert(self):
+        return self._verifySsl
