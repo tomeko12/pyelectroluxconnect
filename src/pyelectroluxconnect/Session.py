@@ -511,11 +511,14 @@ class Session(object):
                         result[_profkey]["nameTransl"] = self._getTranslation(
                             applianceTranslations, _profval["locale_key"])
                     if("steps" in _profval):
-                        result[_profkey]["steps"] = []
+                        result[_profkey]["steps"] = {}
                         for _stepval, _steplangkey in _profval["steps"].items():
+                            result[_profkey]["steps"][_stepval] = {}
                             if("locale_key" in _steplangkey and _steplangkey["locale_key"] in applianceTranslations):
-                                result[_profkey]["steps"].append(
-                                    {_stepval: self._getTranslation(applianceTranslations, _steplangkey["locale_key"])})
+                                result[_profkey]["steps"][_stepval]["transl"] = self._getTranslation(
+                                    applianceTranslations, _steplangkey["locale_key"])
+                            if("key" in _steplangkey):
+                                result[_profkey]["steps"][_stepval]["key"] = _steplangkey["key"]
                     if("type" in _profval and (_profval["type"] == "Container" or _profval["data_format"] == "array(struct)")):
                         result[_profkey]["container"] = []
                         _container = self._parseApplianceProfileContainer(
@@ -559,12 +562,12 @@ class Session(object):
                             })
     
                         if("steps" in profile[_hexHacl]):
-                            for _step in profile[_hexHacl]["steps"]:
-                                if "numberValue" in _item and str(_item["numberValue"]) in _step:
-                                    result[_hexHacl]["valueTransl"] = _step[str(
-                                        _item["numberValue"])]
-                                elif "stringValue" in _item and _item["stringValue"] in _step:
-                                    result[_hexHacl]["valueTransl"] = _step[_item["stringValue"]]
+                            for _step, _stepval in profile[_hexHacl]["steps"].items():
+                                if "transl" in _stepval:
+                                    if "numberValue" in _item and str(_item["numberValue"]) == _step:
+                                        result[_hexHacl]["valueTransl"] = _stepval["transl"]
+                                    elif "stringValue" in _item and _item["stringValue"] == _step:
+                                        result[_hexHacl]["valueTransl"] = _stepval["transl"]
                     if("containers" in _item and len(_item["containers"]) > 0 and
                         _hexHacl in profile and
                         "container" in profile[_hexHacl]
@@ -608,7 +611,8 @@ class Session(object):
                 elif (f'0x{format(stateItem["numberValue"], "04X")}' in profileItem[1]["steps"]):
                     stepKey = f'0x{format(stateItem["numberValue"], "04X")}'
                 if (stepKey is not None and stepKey in profileItem[1]["steps"] and
-                        profileItem[1]["steps"][stepKey] not in ["", "UNIT"]):
+                        profileItem[1]["steps"][stepKey] not in ["", "UNIT"] and 
+                        "transl" in profileItem[1]["steps"][stepKey]):
                     result[profileItem[0]
                            ]["valTransl"] = profileItem[1]["steps"][stepKey]["transl"]
             if ("unit" in profileItem[1]):
@@ -1013,12 +1017,19 @@ class Session(object):
             if(pnc and elc):
 #                _html = self._requestHttp(
 #                    urls.getDocsTable(pnc, elc), verifySSL=True).text
-                _html = requests.get(urls.getDocsTable(pnc, elc)[0], verify=True, timeout=10).text
+                _req = requests.get(urls.getDocsTable(pnc, elc)[0], verify=True, timeout=10, allow_redirects=False)
+                if(_req.status_code == requests.codes.ok):
+                    _html = _req.text
+                    _modelsearch = f'{pnc}{elc}'
+                else:
+                    _req = requests.get(urls.getDocsTable(pnc,"")[0], verify=True, timeout=10, allow_redirects=False)
+                    _html = _req.text
+                    _modelsearch = f'{pnc}'
 
                 soup = BeautifulSoup(_html, "html.parser")
                 cols = soup.find("table", {"class": "SearchGridView"}).find(
                     "tr", {"class": "bottomBorder"}).find_all("td")
-                if(cols[0].get_text().strip().startswith(f'{pnc}{elc}')):
+                if(cols[0].get_text().strip().startswith(_modelsearch)):
                     model = cols[1].get_text().strip()
                     brand = cols[4].get_text().strip()
                     if(os.path.exists(appliancesModelFilePath)):
