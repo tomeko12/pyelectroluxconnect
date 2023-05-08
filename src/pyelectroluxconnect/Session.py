@@ -138,7 +138,8 @@ class Session(object):
         headers = {
             "x-ibm-client-id": urls.getEcpClientId(self._region),
             "x-api-key": urls.getEcpClientId(self._region),
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "user-agent": "okhttp/4.9.1"
         }
         if self._sessionToken:
             headers["session_token"] = self._sessionToken
@@ -153,6 +154,7 @@ class Session(object):
             _payload = {
                 "brand": urls.getEcpClientBrand(self._region),
                 "country": self._country,
+                "fields": {},
                 "deviceId": self._deviceId,
                 "password": self._password,
                 "username": self._username
