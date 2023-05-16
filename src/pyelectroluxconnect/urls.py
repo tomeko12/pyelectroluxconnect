@@ -5,13 +5,13 @@ List of some ECP URLs and strings
 import re
 from urllib.parse import quote_plus
 
-BASE_URL = "https://api.emea.ecp.electrolux.com"
-X_API_KEY = "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35"
+BASE_URL = "https://api.eu.ecp.electrolux.com"
+X_API_KEY = "epLN8yHKltFNEgdggmSFfG6AHHvPcd4k0xGqm830"
 BRAND = "Electrolux"
 
 _region_params = {
-    "emea": ["https://api.emea.ecp.electrolux.com",
-             "714fc3c7-ad68-4c2f-9a1a-b3dbe1c8bb35",
+    "emea": ["https://api.eu.ecp.electrolux.com",
+             "epLN8yHKltFNEgdggmSFfG6AHHvPcd4k0xGqm830",
              "Electrolux"],
     "apac": ["https://api.apac.ecp.electrolux.com",
              "1c064d7a-c02e-438c-9ac6-78bf7311ba7c",
