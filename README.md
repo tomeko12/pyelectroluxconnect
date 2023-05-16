@@ -75,9 +75,7 @@ print(ses.getApplianceProfile(appliance))
 
      
 #### Get appliance latest state from ECP
-Get latest appliance state from ECP. When appliance is online, current state updates are available over:
-- LAN with [AllJoyn](https://en.wikipedia.org/wiki/AllJoyn) protocol
-- Internet with [MQTT](https://en.wikipedia.org/wiki/MQTT) protocol. To get credentials to connect any MQTT client to ECP MQTT broker, use `registerMQTT()` method.
+Get latest appliance state from ECP. When appliance is online, current state updates are available over Internet with [MQTT](https://en.wikipedia.org/wiki/MQTT) protocol. To get credentials to connect any MQTT client to ECP MQTT broker, use `registerMQTT()` method.
  
 
 to get latest state from a platform:   
