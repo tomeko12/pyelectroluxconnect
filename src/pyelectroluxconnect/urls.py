@@ -13,8 +13,8 @@ _region_params = {
     "emea": ["https://api.eu.ecp.electrolux.com",
              "epLN8yHKltFNEgdggmSFfG6AHHvPcd4k0xGqm830",
              "Electrolux"],
-    "apac": ["https://api.apac.ecp.electrolux.com",
-             "1c064d7a-c02e-438c-9ac6-78bf7311ba7c",
+    "apac": ["https://api.ap.ecp.electrolux.com",
+             "MMUqH5Lv7ia7oCJZPHvLU2dDndZcbAdl27z4FcdZ",
              "Electrolux"],
     "na":   ["https://api.latam.ecp.electrolux.com",
              "dc9cfac1-4a29-4509-9041-9ae4a0572aac",
@@ -159,20 +159,32 @@ def getApplianceConfigurationFile(configurationId):
 # Register Client to MQTT broker
 
 
-def registerMQTT():
-    return ["{base_url}/livesubscribe/livestream/register".format(
-        base_url=BASE_URL),
-        "POST"
-    ]
+def registerMQTT(region):
+    if region.lower() == "emea":
+        return ["{base_url}/user-appliance-reg/api/v1.1/devices".format(
+            base_url=BASE_URL),
+            "POST"
+        ]
+    else:
+        return ["{base_url}/livesubscribe/livestream/register".format(
+            base_url=BASE_URL),
+            "POST"
+        ]
 
 # Unregister Client from MQTT broker
 
 
-def unregisterMQTT():
-    return ["{base_url}/livesubscribe/livestream/unregister".format(
-        base_url=BASE_URL),
-        "POST"
-    ]
+def unregisterMQTT(region):
+    if region.lower() == "emea":
+        return ["{base_url}/user-appliance-reg/api/v1.1/devices".format(
+            base_url=BASE_URL),
+            "DEL"
+        ]
+    else:
+        return ["{base_url}/livesubscribe/livestream/unregister".format(
+            base_url=BASE_URL),
+            "POST"
+         ]
 
 # Find docs by PNC
 
