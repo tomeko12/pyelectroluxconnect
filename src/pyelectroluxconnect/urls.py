@@ -16,14 +16,14 @@ _region_params = {
     "apac": ["https://api.ap.ecp.electrolux.com",
              "MMUqH5Lv7ia7oCJZPHvLU2dDndZcbAdl27z4FcdZ",
              "Electrolux"],
-    "na":   ["https://api.latam.ecp.electrolux.com",
-             "dc9cfac1-4a29-4509-9041-9ae4a0572aac",
+    "na":   ["https://api.us.ecp.electrolux.com",
+             "otP12Kbr0e30MpaCf3EV9lZE6LwWAWV5i5aTuYh2",
              "Electrolux-NA"],
-    "latam": ["https://api.latam.ecp.electrolux.com",
-              "3aafa8f0-9fd8-454d-97f6-f46e87b280e2",
+    "latam": ["https://api.us.ecp.electrolux.com/",
+              "2trEsQPXBd1gDgFjXnDbRSyFgIMjMVG7GYdMVJvf",
               "Electrolux"],
-    "frigidaire": ["https://api.latam.ecp.electrolux.com",
-                   "7ff2358e-8d6d-4cf6-814a-fcb498fa2cf9",
+    "frigidaire": ["https://api.us.ecp.electrolux.com/",
+                   "Gsdwexj38r1sXSXIPVdxj4DGoU5ZoaI6aW6ZckBI",
                    "frigidaire"]
 }
 
@@ -175,16 +175,10 @@ def registerMQTT(region):
 
 
 def unregisterMQTT(region):
-    if region.lower() == "emea":
-        return ["{base_url}/user-appliance-reg/api/v1.1/devices".format(
-            base_url=BASE_URL),
-            "DEL"
-        ]
-    else:
-        return ["{base_url}/livesubscribe/livestream/unregister".format(
-            base_url=BASE_URL),
-            "POST"
-         ]
+    return ["{base_url}/user-appliance-reg/api/v1.1/devices".format(
+        base_url=BASE_URL),
+        "DEL"
+    ]
 
 # Find docs by PNC
 
