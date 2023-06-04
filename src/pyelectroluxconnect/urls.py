@@ -19,10 +19,10 @@ _region_params = {
     "na":   ["https://api.us.ecp.electrolux.com",
              "otP12Kbr0e30MpaCf3EV9lZE6LwWAWV5i5aTuYh2",
              "Electrolux-NA"],
-    "latam": ["https://api.us.ecp.electrolux.com/",
+    "latam": ["https://api.us.ecp.electrolux.com",
               "2trEsQPXBd1gDgFjXnDbRSyFgIMjMVG7GYdMVJvf",
               "Electrolux"],
-    "frigidaire": ["https://api.us.ecp.electrolux.com/",
+    "frigidaire": ["https://api.us.ecp.electrolux.com",
                    "Gsdwexj38r1sXSXIPVdxj4DGoU5ZoaI6aW6ZckBI",
                    "frigidaire"]
 }
