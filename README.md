@@ -2,7 +2,40 @@
 Python client package to communicate with the Electrolux Connectivity Platform (**ECP**) used by some home appliances, Electrolux owned brands, like: **Electrolux**, **AEG**, **Frigidaire**, **Husqvarna**.
 Tested with AEG washer-dryer, but probably could be used with some internet connected ovens, diswashers, fridges, airconditioners.  
 It is general client, and all parameters (called HACL), that can be read or set, names and translations are dynamically generated, based on appliance profile file, downloaded from ECP servers. 
-Appliance must be registered with one of the following ECP based applications: Electrolux Care, Electrolux Kitchen, Electrolux Life, Electrolux Oven, Electrolux Home+, AEG Care, AEG Kitchen, Frigidaire 2.0
+
+## Compatibility
+This package is compatibile with home appliances registered with one of this ECP based mobile apps:  
+
+- **EMEA region:**
+  - My AEG Care ([Google Play](https://play.google.com/store/apps/details?id=com.aeg.myaeg), [App Store](https://apps.apple.com/gb/app/my-aeg-care/id1087824977))  
+  - My Electrolux Care ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.myelx), [App Store](https://apps.apple.com/gb/app/my-electrolux-care/id1116118055))  
+  - My AEG Kitchen ([Google Play](https://play.google.com/store/apps/details?id=com.aeg.myaeg.taste), [App Store](https://apps.apple.com/gb/app/my-aeg-kitchen/id1348681700))  
+  - My Electrolux Kitchen ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.myelx.taste), [App Store](https://apps.apple.com/gb/app/my-electrolux-kitchen/id1348668617))  
+
+- **APAC region:**
+  - Electrolux Life ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.electroluxlife), [App Store](https://apps.apple.com/au/app/electrolux-life/id1352924780))  
+
+- **LATAM region:**
+  - Electrolux Home+ ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.revamp), [App Store](https://apps.apple.com/br/app/electrolux-home/id1598612686))  
+
+- **NA region:**
+  - Electrolux Oven ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.ecp.coreapp.na), [App Store](https://apps.apple.com/us/app/electrolux-oven/id1549973042))  
+
+- **Frigidaire:**
+  - Frigidaire 2.0 ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.ecp.coreapp.frigidaire.na), [App Store](https://apps.apple.com/us/app/frigidaire-2-0/id1500302958))  
+
+
+## Unsupported devices
+This package **is not** compatibile with appliances controlled with this mobile apps:  
+- Electrolux ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.electrolux), [App Store](https://apps.apple.com/gb/app/electrolux/id1595816832))  
+- AEG ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.aeg), [App Store](https://apps.apple.com/gb/app/aeg/id1599494494))  
+- Frigidaire ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.frigidaire), [App Store](https://apps.apple.com/us/app/frigidaire/id1599494923))  
+- Electrolux Wellbeing ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.wellbeing), [App Store](https://apps.apple.com/gb/app/electrolux-wellbeing/id1436169315))  
+- AEG Wellbeing ([Google Play](https://play.google.com/store/apps/details?id=com.aeg.wellbeing), [App Store](https://apps.apple.com/gb/app/aeg-wellbeing/id1494284929))  
+- Electrolux Home Comfort ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.airconditioner), [App Store](https://apps.apple.com/gb/app/electrolux-home-comfort/id1318742765))  
+- AEG Home Comfort ([Google Play](https://play.google.com/store/apps/details?id=com.aeg.airconditioner), [App Store](https://apps.apple.com/gb/app/aeg-home-comfort/id1320946491))  
+- Electrolux AirCare ([Google Play](https://play.google.com/store/apps/details?id=com.aircare.electrolux), [App Store](https://apps.apple.com/gb/app/electrolux-aircare/id569837094))  
+- Electrolux Wifi ControlBox ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.wifibox), [App Store](https://apps.apple.com/gb/app/electrolux-wifi-controlbox/id1095621521))  
     
 ## Features
 - list appliances paired with Electrolux account
@@ -144,6 +177,7 @@ Parse message from MQTT broker, and return in getApplianceState(...) like form.
 `mqttJsonPayload` - MQTT message payload in JSON form.
 
 #### Very simple MQTT example to receive online appliance state changes from ECP MQTT broker
+*Please Note: Electrolux moved MQTT broker from IBM servers. After that, this code is not valid.*
 
 ```python
 import paho.mqtt.client as mqtt
