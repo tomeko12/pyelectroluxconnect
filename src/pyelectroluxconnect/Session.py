@@ -136,6 +136,7 @@ class Session(object):
 
     def _headers(self):
         headers = {
+            "Authorization": f'Basic {urls.getEcpClientId(self._region)}',
             "x-ibm-client-id": urls.getEcpClientId(self._region),
             "x-api-key": urls.getEcpClientId(self._region),
             "Content-Type": "application/json",
@@ -244,9 +245,10 @@ class Session(object):
                     except requests.exceptions.RequestException as ex:
                         raise RequestError(ex)
 
-                if(os.path.exists(applianceConfigFilePath)
-                   and f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' ==
+                if(os.path.exists(applianceConfigFilePath)):
+                    if(f'md5-{hashlib.md5(open(applianceConfigFilePath,"rb").read()).hexdigest()}' !=
                         _json[0]["configuration_file"][applianceConfigFileName]["digest"]):
+                        _LOGGER.warn(f'Configuration file {applianceConfigFilePath} has wrong MD5 checksum')
 
                     with zipfile.ZipFile(applianceConfigFilePath, "r") as archive:
                         result["Translations"] = {}
@@ -923,11 +925,15 @@ class Session(object):
             elif (operation[1] == "POST"):
                 response = requests.post(operation[0], json=payload,
                                          headers=self._headers(), verify=verifySSL)
+            elif (operation[1] == "DEL"):
+                response = requests.delete(operation[0], json=payload,
+                                         headers=self._headers(), verify=verifySSL)
             else:
                 _LOGGER.error(f"Unsupported request definition: {operation[1]}")
                 raise Error(f"Unsupported request definition: {operation[1]}")
 
             _LOGGER.debug(f"HTTP Respose body: {response.text}")
+            _LOGGER.debug(f"HTTP Respose headers: {response.headers}")
 
             if 2 != response.status_code // 100:
                 raise HttpResponseError(response.status_code, response.text) from None
@@ -1246,22 +1252,24 @@ class Session(object):
 
         """
         try:
-            _json = self._requestApi(urls.registerMQTT(), None)
+            _json = self._requestApi(urls.registerMQTT(self._region), None)
         except ResponseError as err:
             if(err.status_code == "ECP0206"):
                 """ Device registered already, unregister first to get new token """
                 _LOGGER.warn(f"Device registered already in Electrolux MQTT broker, unregistering to get new token")
                 self.unregisterMQTT()
                 _json = self._requestApi(
-                    urls.registerMQTT(), None)
+                    urls.registerMQTT(self._region), None)
             else:
                 raise
         finally:
             return {
-                "Url": _json["MQTTURL"],
-                "OrgId": _json["ECP_org_id"],
-                "DeviceToken": _json["DeviceToken"],
-                "ClientID": _json["ClientID"],
+                "Url": _json["mqttUrl"],
+#                "OrgId": _json["ECP_org_id"],
+#                "DeviceToken": _json["DeviceToken"],
+                "ClientID": _json["clientId"],
+                "topic": _json["topic"],
+                "featureTopic": _json["featureTopic"],
             }
 
 
@@ -1270,7 +1278,7 @@ class Session(object):
         """
         Unregister device from Electrolux MQTT broker
         """
-        self._requestApi(urls.unregisterMQTT(), None)
+        self._requestApi(urls.unregisterMQTT(self._region), None)
 
 
     def getSSLCert(self):
