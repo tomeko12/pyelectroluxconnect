@@ -1,6 +1,6 @@
 # pyelectroluxconnect
 > [!IMPORTANT]
-> Electrolux is moving user accounts fom Electrolux Connectivity Platform (**ECP**) to OneApp (**OCP**) API used by Electrolux ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.electrolux), [App Store](https://apps.apple.com/gb/app/electrolux/id1595816832)) and  AEG ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.aeg), [App Store](https://apps.apple.com/gb/app/aeg/id1599494494)) Apps. OneApp API is not supported by this client.
+> Electrolux have moved user accounts fom Electrolux Connectivity Platform (**ECP**) to OneApp (**OCP**) API used by Electrolux ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.electrolux), [App Store](https://apps.apple.com/gb/app/electrolux/id1595816832)) and  AEG ([Google Play](https://play.google.com/store/apps/details?id=com.electrolux.oneapp.android.aeg), [App Store](https://apps.apple.com/gb/app/aeg/id1599494494)) Apps. OneApp API is not supported by this client. ECP access is disabled by Electrolux. This client don't work anymore.
 
 Python client package to communicate with the Electrolux Connectivity Platform (**ECP**) used by some home appliances, Electrolux owned brands, like: **Electrolux**, **AEG**, **Frigidaire**, **Husqvarna**.
 Tested with AEG washer-dryer, but probably could be used with some internet connected ovens, diswashers, fridges, airconditioners.  
